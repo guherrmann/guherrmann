@@ -56,3 +56,15 @@ As metas ficam em `METAS`, em `indicadores.py`.
 - `indicadores.py`: classificação das transações e cálculo dos indicadores
 - `gerar_painel.py`: baixa os dados, calcula e preenche o template
 - `painel_template.html`: o painel (HTML + SVG, sem bibliotecas externas)
+
+## Painel interativo no Claude
+
+`financas/artifact/index.html` é a página do painel interativo (artefato do tipo Dashboard no claude.ai,
+privado). Ela lê 7 conjuntos de dados que o gerador exporta:
+
+```bash
+python3 financas/gerar_painel.py --datasets financas/saida/datasets
+```
+
+Os arquivos (`mensal`, `grupos`, `contas`, `cartoes`, `parcelas`, `mes_atual`, `recorrentes`) são enviados
+ao artefato como anexos. Uma tarefa agendada repete isso todo domingo de manhã.

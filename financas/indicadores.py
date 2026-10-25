@@ -123,7 +123,7 @@ def calcular(transacoes, saldo, fatura, parcelas, hoje):
     meses = lista_meses(dt.date(hoje.year - 1, hoje.month, 1), hoje)  # 12 completos + mês atual
     completos, atual = meses[:-1], meses[-1]
 
-    rec, desp, aplic, fixos = (collections.defaultdict(float) for _ in range(4))
+    rec, desp, aplic, fixos, fora = (collections.defaultdict(float) for _ in range(5))
     por_grupo = collections.defaultdict(lambda: collections.defaultdict(float))
     por_cat = collections.defaultdict(lambda: collections.defaultdict(float))
     estab = collections.defaultdict(lambda: collections.defaultdict(float))
@@ -144,6 +144,8 @@ def calcular(transacoes, saldo, fatura, parcelas, hoje):
             por_cat[cat][m] += v
             if cat in FIXOS:
                 fixos[m] += v
+            if cat in COMER_FORA:
+                fora[m] += v
             if v > 0:
                 estab[nome_estabelecimento(t.get("description", ""))][m] += v
 
@@ -236,6 +238,8 @@ def calcular(transacoes, saldo, fatura, parcelas, hoje):
             "receita": [round(rec[m], 2) for m in completos],
             "despesa": [round(desp[m], 2) for m in completos],
             "fixos": [round(fixos[m], 2) for m in completos],
+            "comer_fora": [round(fora[m], 2) for m in completos],
+            "aplicado": [round(aplic[m], 2) for m in completos],
             "poupanca": [_pct(rec[m] - desp[m], rec[m]) for m in completos],
             "grupos": {g: [round(por_grupo[g][m], 2) for m in completos] for g in grupos_ordenados},
         },

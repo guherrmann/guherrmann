@@ -1,0 +1,482 @@
+<style>
+.pf{display:flex;flex-direction:column;gap:var(--cds-gap-lg);font-family:var(--font-anthropic-sans);color:var(--color-fg)}
+.pf-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--cds-gap-md)}
+.pf-title{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0;line-height:1.2}
+.pf-take{margin:var(--cds-gap-xs) 0 0;color:var(--color-fg-muted);font-size:var(--cds-font-size-body);max-width:60rem}
+.pf-take b{color:var(--color-fg)}
+.pf-ctrl{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm);align-items:center}
+.pf-seg{display:inline-flex;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);overflow:hidden}
+.pf-seg button{font:inherit;font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-sm);background:var(--color-panel);color:var(--color-fg-muted);border:0;cursor:pointer}
+.pf-seg button+button{border-left:1px solid var(--color-border-line)}
+.pf-seg button[aria-pressed="true"]{background:var(--color-fg);color:var(--color-bg)}
+.pf-seg button:focus-visible,.pf-btn:focus-visible,.pf-metas input:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
+.pf-btn{font:inherit;font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-panel);color:var(--color-fg);cursor:pointer}
+.pf-h2{font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);margin:0}
+.pf-note{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin:2px 0 var(--cds-gap-md)}
+.pf-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);min-width:0;position:relative}
+.pf-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:var(--cds-gap-md)}
+.pf-kpi{display:flex;flex-direction:column;gap:2px}
+.pf-kpi .l{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.pf-kpi .v{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums;line-height:1.15;min-height:1.15em}
+.pf-kpi .d{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.pf-st{display:inline-flex;align-items:center;gap:4px;font-size:var(--cds-font-size-caption);font-weight:var(--cds-font-weight-medium);margin-top:var(--cds-gap-xs)}
+.pf-st.good{color:var(--color-ok)} .pf-st.warning{color:var(--color-warn)} .pf-st.critical{color:var(--color-bad)}
+.pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:var(--cds-gap-md)}
+.pf-wide{grid-column:1/-1}
+.pf-nums{display:flex;flex-wrap:wrap;gap:var(--cds-gap-lg);margin-bottom:var(--cds-gap-sm)}
+.pf-nums .l{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.pf-nums .v{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums;min-height:1.15em}
+.pf-meter{position:relative;height:10px;border-radius:5px;background:var(--cds-chart-grid);margin:var(--cds-gap-sm) 0 var(--cds-gap-xs)}
+.pf-meter .f{position:absolute;inset:0 auto 0 0;border-radius:5px}
+.pf-meter .p{position:absolute;top:0;bottom:0;border-radius:0 5px 5px 0;opacity:.35}
+.pf-meter .m{position:absolute;top:-4px;bottom:-4px;border-left:2px solid var(--color-fg)}
+.pf-tbl{width:100%;border-collapse:collapse;font-size:var(--cds-font-size-body);font-variant-numeric:tabular-nums}
+.pf-tbl th{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-weight:var(--cds-font-weight-medium);text-align:left;padding:6px 6px;border-bottom:1px solid var(--color-border-line)}
+.pf-tbl td{padding:6px 6px;border-bottom:1px solid var(--cds-chart-grid)}
+.pf-tbl .n{text-align:right;white-space:nowrap}
+.pf-tbl .up{color:var(--color-bad)}
+.pf-scroll{overflow-x:auto}
+.pf-chart{min-height:260px;position:relative}
+.pf-chart svg text{fill:var(--color-fg-muted);font-size:var(--cds-font-size-caption);font-family:var(--font-anthropic-sans)}
+.pf-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-bottom:var(--cds-gap-sm)}
+.pf-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.pf-legend .ln{display:inline-block;width:14px;border-top:2px solid var(--color-fg);margin-right:5px;vertical-align:3px}
+.pf-legend .dash{display:inline-block;width:14px;border-top:2px dashed var(--cds-chart-reference);margin-right:5px;vertical-align:3px}
+.pf-tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);min-width:11rem;z-index:5;opacity:0}
+.pf-tip .t{color:var(--cds-text-secondary);margin-bottom:2px}
+.pf-tip .r{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums}
+.pf-tip .r i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.pf-metas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:var(--cds-gap-sm) var(--cds-gap-md);margin-top:var(--cds-gap-sm)}
+.pf-metas label{display:flex;justify-content:space-between;align-items:center;gap:var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.pf-metas input{width:5.5rem;font:inherit;font-variant-numeric:tabular-nums;padding:4px 6px;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);text-align:right}
+.pf-err{display:flex;align-items:center;justify-content:center;gap:6px;min-height:inherit;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.pf-err::before{content:"";width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad)}
+[data-dash-source-state=empty]{color:transparent}
+[data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
+.pf ul{margin:0;padding-left:1.1rem;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.pf li{margin:3px 0}
+</style>
+
+<div class="pf">
+  <div class="pf-head">
+    <div>
+      <h1 class="pf-title">Painel financeiro</h1>
+      <p class="pf-take" id="pf-take"><span class="dash-skeleton">—</span></p>
+    </div>
+    <div class="pf-ctrl">
+      <div class="pf-seg" role="group" aria-label="Período" id="pf-periodo">
+        <button type="button" data-n="3">3 meses</button><button type="button" data-n="6">6 meses</button><button type="button" data-n="12">12 meses</button>
+      </div>
+      <button type="button" class="pf-btn" id="pf-metas-btn" aria-expanded="false" aria-controls="pf-metas-card">Ajustar metas</button>
+    </div>
+  </div>
+
+  <div class="pf-card" id="pf-metas-card" hidden>
+    <h2 class="pf-h2">Suas metas</h2>
+    <p class="pf-note">Os indicadores mudam de cor conforme estas metas. Para guardar novas metas como padrão, peça ao Claude no chat.</p>
+    <div class="pf-metas" id="pf-metas"></div>
+    <div style="margin-top:var(--cds-gap-md)"><button type="button" class="pf-btn" id="pf-reset">Voltar às metas padrão</button></div>
+  </div>
+
+  <section id="indicadores" class="pf-kpis" aria-label="Indicadores"></section>
+
+  <div class="pf-grid">
+    <div class="pf-card" id="ritmo">
+      <h2 class="pf-h2" id="pf-ritmo-t">Ritmo do mês</h2>
+      <p class="pf-note">Gasto até hoje comparado à média mensal dos últimos 12 meses</p>
+      <div class="pf-nums">
+        <div><div class="l">Gasto até agora</div><div class="v" data-source="ritmo_total" data-field="gasto" data-row="0" id="pf-r-gasto">—</div></div>
+        <div><div class="l">Projeção do mês</div><div class="v" data-source="ritmo_total" data-field="projecao" data-row="0" id="pf-r-proj">—</div></div>
+        <div><div class="l">Média mensal</div><div class="v" data-source="ritmo_total" data-field="media" data-row="0" id="pf-r-media">—</div></div>
+        <div><div class="l">Entradas no mês</div><div class="v" data-source="ritmo_total" data-field="receita" data-row="0" id="pf-r-rec">—</div></div>
+      </div>
+      <div class="pf-meter" id="pf-r-meter" data-source="ritmo_total"></div>
+      <div class="pf-note" id="pf-r-leg" style="margin-bottom:var(--cds-gap-sm)"></div>
+      <div class="pf-scroll">
+        <table class="pf-tbl" id="pf-ritmo-tbl" data-source="ritmo" data-row-key="grupo">
+          <thead><tr><th data-field="grupo">Grupo</th><th class="n" data-field="atual">Este mês</th><th class="n" data-field="media">Média</th><th class="n" data-field="uso">Uso da média</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pf-card" id="cartoes">
+      <h2 class="pf-h2">Cartões e contas</h2>
+      <p class="pf-note">Uso do limite e saldos atuais</p>
+      <div id="pf-cards" data-source="cartoes"></div>
+      <div class="pf-scroll" style="margin-top:var(--cds-gap-md)">
+        <table class="pf-tbl" id="pf-contas" data-source="contas" data-row-key="conta">
+          <thead><tr><th data-field="conta">Conta</th><th class="n" data-field="saldo">Saldo</th></tr></thead><tbody></tbody>
+        </table>
+      </div>
+      <h2 class="pf-h2" style="margin-top:var(--cds-gap-lg)">Parcelas a vencer</h2>
+      <div class="pf-scroll">
+        <table class="pf-tbl" id="pf-parcelas" data-source="parcelas" data-row-key="mes">
+          <thead><tr><th data-field="mes">Mês</th><th class="n" data-field="valor">Valor</th></tr></thead><tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pf-card pf-wide" id="poupanca">
+      <h2 class="pf-h2">Taxa de poupança por mês</h2>
+      <p class="pf-note" id="pf-poup-note">Quanto da renda sobrou em cada mês</p>
+      <div class="pf-legend"><span><i style="background:var(--pf-c0)"></i>Sobrou</span><span><i style="background:var(--pf-c1)"></i>Faltou</span><span><span class="dash"></span>Meta</span></div>
+      <div class="pf-chart" id="pf-ch-poup" data-source="poupanca_mensal"></div>
+    </div>
+
+    <div class="pf-card pf-wide" id="composicao">
+      <h2 class="pf-h2">Para onde vai o dinheiro</h2>
+      <p class="pf-note">Saídas por grupo, mês a mês. A linha é a renda do mês.</p>
+      <div class="pf-legend" id="pf-leg-grupos" data-source="grupos"></div>
+      <div class="pf-chart" id="pf-ch-grupos" data-source="grupos mensal" style="min-height:300px"></div>
+    </div>
+
+    <div class="pf-card" id="recorrentes">
+      <h2 class="pf-h2">Gastos recorrentes</h2>
+      <p class="pf-note">Estabelecimentos presentes em 6 meses ou mais (últimos 12 meses)</p>
+      <div class="pf-scroll">
+        <table class="pf-tbl" id="pf-rec" data-source="recorrentes" data-row-key="estabelecimento">
+          <thead><tr><th data-field="estabelecimento">Estabelecimento</th><th class="n" data-field="meses">Meses</th><th class="n" data-field="media">Média/mês</th></tr></thead><tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pf-card" id="metodo">
+      <h2 class="pf-h2">Como os números são calculados</h2>
+      <ul style="margin-top:var(--cds-gap-sm)">
+        <li><b>Entradas</b>: créditos em conta (salário, PIX recebidos, rendimentos).</li>
+        <li><b>Saídas</b>: compras no cartão, no mês de vencimento de cada parcela e com estornos descontados, mais débitos em conta.</li>
+        <li>Ficam de fora pagamentos de fatura, transferências entre contas suas e aplicações.</li>
+        <li><b>Reserva</b>: saldo em conta dividido pela saída média mensal do período.</li>
+        <li><b>Gastos fixos</b>: moradia, luz, internet, celular, seguros e assinaturas.</li>
+        <li>Os períodos usam meses completos. O mês atual aparece só no quadro de ritmo.</li>
+        <li>Dados do Pierre (Open Finance), atualizados todo domingo.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+window.pfFmt = {
+  brl: (v) => Number(v).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', maximumFractionDigits: 0}),
+  brl2: (v) => Number(v).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}),
+  pct: (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + '%',
+  num: (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 1}),
+  mes: (m) => { const n = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']; const [y, mm] = String(m).split('-'); return n[+mm - 1] + '/' + y.slice(2); },
+  mesLongo: (m) => ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][+String(m).split('-')[1] - 1],
+};
+document.querySelector('.pf').style.setProperty('--pf-c0', dash.colors[0]);
+document.querySelector('.pf').style.setProperty('--pf-c1', dash.colors[1]);
+
+dash.calc('kpis', {
+  inputs: ['mensal', 'contas', 'cartoes', 'parcelas'],
+  title: 'Indicadores por período',
+  description: 'Taxa de poupança, reserva e pesos na renda para 3, 6 e 12 meses, a partir dos totais mensais, saldos, cartões e parcelas.',
+  fn: (mensal, contas, cartoes, parcelas) => {
+    const num = (x) => Number(x) || 0;
+    const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : null;
+    const saldo = contas.reduce((s, c) => s + num(c.saldo), 0);
+    const limite = cartoes.reduce((s, c) => s + num(c.limite), 0);
+    const usado = cartoes.reduce((s, c) => s + num(c.limite) - num(c.disponivel), 0);
+    const futuras = parcelas.reduce((s, p) => s + num(p.valor), 0);
+    return [3, 6, 12].map((n) => {
+      const r = mensal.slice(-n);
+      const soma = (k) => r.reduce((s, x) => s + num(x[k]), 0);
+      const receita = soma('receita'), despesa = soma('despesa');
+      return {
+        periodo: n, receita, despesa, sobra: receita - despesa,
+        poupanca: pct(receita - despesa, receita),
+        reserva: despesa ? Math.round(saldo / (despesa / r.length) * 10) / 10 : null,
+        fixos: pct(soma('fixos'), receita), carro: pct(soma('carro'), receita), comer_fora: pct(soma('comer_fora'), receita),
+        aplicado: soma('aplicado'), saldo, limite, usado, limite_pct: pct(usado, limite),
+        parcelas: futuras, parcelas_pct: pct(futuras, receita / r.length),
+      };
+    });
+  },
+});
+
+dash.calc('poupanca_mensal', {
+  inputs: ['mensal'],
+  title: 'Poupança de cada mês',
+  description: 'Entradas menos saídas de cada mês, e essa sobra como parte das entradas.',
+  fn: (mensal) => mensal.map((m) => {
+    const rec = Number(m.receita) || 0, desp = Number(m.despesa) || 0;
+    return {mes: m.mes, receita: rec, despesa: desp, sobra: rec - desp, poupanca: rec ? Math.round((rec - desp) / rec * 1000) / 10 : null};
+  }),
+});
+
+dash.calc('ritmo_total', {
+  inputs: ['mes_atual', 'mensal'],
+  title: 'Ritmo do mês atual',
+  description: 'Gasto do mês até hoje, projetado pelos dias corridos, e a saída média mensal dos últimos 12 meses.',
+  fn: (mes_atual, mensal) => {
+    if (!mes_atual.length) return [];
+    const a = mes_atual[0];
+    const gasto = mes_atual.reduce((s, g) => s + (Number(g.valor) || 0), 0);
+    const media = mensal.reduce((s, m) => s + (Number(m.despesa) || 0), 0) / (mensal.length || 1);
+    return [{mes: a.mes, dia: Number(a.dia), dias: Number(a.dias), receita: Number(a.receita), gasto, projecao: gasto / Number(a.dia) * Number(a.dias), media}];
+  },
+});
+
+dash.calc('ritmo', {
+  inputs: ['mes_atual', 'grupos'],
+  title: 'Gasto do mês por grupo',
+  description: 'Gasto de cada grupo no mês atual e a média mensal do grupo nos últimos 12 meses.',
+  fn: (mes_atual, grupos) => {
+    const meses = new Set(grupos.map((g) => g.mes)).size || 1;
+    const media = {};
+    grupos.forEach((g) => { media[g.grupo] = (media[g.grupo] || 0) + (Number(g.valor) || 0) / meses; });
+    return mes_atual.map((g) => {
+      const m = media[g.grupo] || 0, atual = Number(g.valor) || 0;
+      return {grupo: g.grupo, atual, media: m, uso: m ? Math.round(atual / m * 100) : null};
+    }).filter((g) => g.atual || g.media);
+  },
+});
+</script>
+
+<script>
+(() => {
+  const F = window.pfFmt;
+  const METAS = [
+    {k: 'poupanca', p: 'meta_poupanca', l: 'Taxa de poupança', u: '%', maior: true, min: 0, max: 80},
+    {k: 'reserva', p: 'meta_reserva', l: 'Reserva de emergência', u: 'meses', maior: true, min: 0, max: 24},
+    {k: 'fixos', p: 'meta_fixos', l: 'Gastos fixos / renda', u: '%', maior: false, min: 0, max: 100},
+    {k: 'carro', p: 'meta_carro', l: 'Carro e transporte / renda', u: '%', maior: false, min: 0, max: 100},
+    {k: 'comer_fora', p: 'meta_comer_fora', l: 'Restaurante e delivery / renda', u: '%', maior: false, min: 0, max: 100},
+    {k: 'limite_pct', p: 'meta_limite', l: 'Uso do limite dos cartões', u: '%', maior: false, min: 0, max: 100},
+    {k: 'parcelas_pct', p: 'meta_parcelas', l: 'Parcelas futuras / renda mensal', u: '%', maior: false, min: 0, max: 200},
+  ];
+  window.pfMetas = METAS;
+  const DEF = {periodo: 12, meta_poupanca: 20, meta_reserva: 6, meta_fixos: 50, meta_carro: 15, meta_comer_fora: 5, meta_limite: 30, meta_parcelas: 10};
+  const param = (n) => { const v = dash.params()[n]; return v == null || v === '' ? DEF[n] : Number(v); };
+  window.pfParam = param;
+  window.pfStatus = (valor, meta, maior) => {
+    if (valor == null) return null;
+    if (maior) return valor >= meta ? 'good' : valor >= meta / 2 ? 'warning' : 'critical';
+    return valor <= meta ? 'good' : valor <= meta * 1.5 ? 'warning' : 'critical';
+  };
+  const ST = {good: ['✓', 'Dentro da meta'], warning: ['!', 'Atenção'], critical: ['✕', 'Fora da meta']};
+
+  const kpiDefs = [
+    {k: 'poupanca', l: 'Taxa de poupança', fmt: F.pct, det: (r) => `sobrou ${F.brl(r.sobra)} no período`},
+    {k: 'reserva', l: 'Reserva de emergência', fmt: (v) => F.num(v) + ' meses', det: (r) => `${F.brl(r.saldo)} em conta`},
+    {k: 'fixos', l: 'Gastos fixos / renda', fmt: F.pct, det: () => 'moradia, contas, seguros, assinaturas'},
+    {k: 'carro', l: 'Carro e transporte / renda', fmt: F.pct, det: () => 'combustível, manutenção, pedágio, seguro'},
+    {k: 'comer_fora', l: 'Restaurante e delivery / renda', fmt: F.pct, det: () => 'o gasto mais fácil de ajustar'},
+    {k: 'limite_pct', l: 'Uso do limite dos cartões', fmt: F.pct, det: (r) => `${F.brl(r.usado)} de ${F.brl(r.limite)}`},
+    {k: 'parcelas_pct', l: 'Parcelas futuras / renda mensal', fmt: F.pct, det: (r) => `${F.brl(r.parcelas)} a vencer`},
+  ];
+  const sec = document.getElementById('indicadores');
+  sec.innerHTML = kpiDefs.map((d) => `<div class="pf-card pf-kpi" id="kpi-${d.k}"><div class="l">${d.l}</div><div class="v dash-skeleton" data-source="kpis" data-field="${d.k}" data-where="periodo=12"></div><div class="d"></div><div class="pf-st"></div></div>`).join('');
+
+  // período
+  const seg = document.getElementById('pf-periodo');
+  seg.addEventListener('click', (e) => { const b = e.target.closest('button[data-n]'); if (b) dash.setParams({periodo: Number(b.dataset.n)}); });
+
+  // metas
+  const box = document.getElementById('pf-metas');
+  box.innerHTML = METAS.map((m) => `<label for="pf-in-${m.p}">${m.l} (${m.maior ? 'mín.' : 'máx.'})<span><input id="pf-in-${m.p}" type="number" step="0.5" min="${m.min}" max="${m.max}" data-p="${m.p}"> ${m.u}</span></label>`).join('');
+  box.addEventListener('change', (e) => {
+    const i = e.target.closest('input[data-p]');
+    if (i && i.value !== '' && i.validity.valid) dash.setParams({[i.dataset.p]: Number(i.value)});
+  });
+  const btn = document.getElementById('pf-metas-btn'), card = document.getElementById('pf-metas-card');
+  btn.addEventListener('click', () => { card.hidden = !card.hidden; btn.setAttribute('aria-expanded', String(!card.hidden)); });
+  document.getElementById('pf-reset').addEventListener('click', () => { const p = dash.params().periodo; dash.resetParams(); if (p) dash.setParams({periodo: p}); });
+
+  dash.onData(() => {
+    const n = param('periodo');
+    seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.n) === n)));
+    box.querySelectorAll('input[data-p]').forEach((i) => { if (i !== document.activeElement) i.value = param(i.dataset.p); });
+    const k = dash.data('kpis');
+    const row = k.status === 'ok' ? k.data.find((r) => r.periodo === n) : null;
+    let fora = 0;
+    kpiDefs.forEach((d) => {
+      const el = document.getElementById('kpi-' + d.k), v = el.querySelector('.v'), det = el.querySelector('.d'), st = el.querySelector('.pf-st');
+      v.setAttribute('data-where', 'periodo=' + n);
+      if (!row) {
+        v.textContent = ''; det.textContent = ''; st.textContent = '';
+        v.classList.toggle('dash-skeleton', k.status === 'loading');
+        if (k.status === 'error') v.innerHTML = '<span class="pf-err">Falhou ao carregar</span>';
+        return;
+      }
+      v.classList.remove('dash-skeleton');
+      const meta = METAS.find((m) => m.k === d.k);
+      const s = window.pfStatus(row[d.k], param(meta.p), meta.maior);
+      if (s && s !== 'good') fora++;
+      v.textContent = d.fmt(row[d.k]);
+      det.textContent = d.det(row) + ` · meta ${meta.maior ? '≥' : '≤'} ${F.num(param(meta.p))}${meta.u === '%' ? '%' : ' ' + meta.u}`;
+      st.className = 'pf-st ' + (s || '');
+      st.textContent = s ? ST[s][0] + ' ' + ST[s][1] : '';
+    });
+    const take = document.getElementById('pf-take');
+    if (!row) { take.innerHTML = k.status === 'error' ? '' : '<span class="dash-skeleton">—</span>'; return; }
+    const txt = (s) => { const e = document.createElement('b'); e.textContent = s; return e; };
+    const sp = (s) => document.createTextNode(s);
+    const p = document.createElement('b');
+    p.setAttribute('data-source', 'kpis'); p.setAttribute('data-field', 'poupanca'); p.setAttribute('data-where', 'periodo=' + n);
+    p.textContent = F.pct(row.poupanca);
+    const r = document.createElement('b');
+    r.setAttribute('data-source', 'kpis'); r.setAttribute('data-field', 'reserva'); r.setAttribute('data-where', 'periodo=' + n);
+    r.textContent = F.num(row.reserva) + ' meses';
+    take.replaceChildren(sp(`Nos últimos ${n} meses sobrou `), p, sp(' da renda e a reserva cobre '), r, sp(' de gastos. '),
+      txt(`${fora} de ${kpiDefs.length}`), sp(' indicadores estão fora da meta ou pedem atenção.'));
+  });
+})();
+</script>
+
+<script>
+(() => {
+  const F = window.pfFmt;
+  const err = (el, d) => { if (d.status === 'error') el.innerHTML = '<div class="pf-err">Falhou ao carregar</div>'; };
+  const fillTable = (id, ds, cols, key) => {
+    const tb = document.querySelector(`#${id} tbody`);
+    const d = dash.data(ds);
+    if (d.status !== 'ok') { tb.replaceChildren(); return d; }
+    tb.replaceChildren(...d.data.map((r) => {
+      const tr = document.createElement('tr');
+      if (key) tr.dataset.key = r[key];
+      cols.forEach(([k, f, cls]) => { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = f ? f(r[k], r) : r[k]; tr.appendChild(td); });
+      return tr;
+    }));
+    return d;
+  };
+
+  dash.onData(() => {
+    // Ritmo
+    const t = dash.data('ritmo_total');
+    const ids = {gasto: 'pf-r-gasto', projecao: 'pf-r-proj', media: 'pf-r-media', receita: 'pf-r-rec'};
+    const r = t.status === 'ok' ? t.data[0] : null;
+    Object.entries(ids).forEach(([k, id]) => { document.getElementById(id).textContent = r ? F.brl(r[k]) : '—'; });
+    const meter = document.getElementById('pf-r-meter'), leg = document.getElementById('pf-r-leg');
+    if (r) {
+      document.getElementById('pf-ritmo-t').textContent = `Ritmo de ${F.mesLongo(r.mes)} (até o dia ${r.dia})`;
+      const esc = Math.max(r.projecao, r.media) * 1.08;
+      const acima = r.gasto > r.media * r.dia / r.dias;
+      const cor = acima ? 'var(--cds-chart-status-critical)' : dash.colors[0];
+      meter.innerHTML = `<div class="f" style="width:${r.gasto / esc * 100}%;background:${cor}"></div><div class="p" style="left:${r.gasto / esc * 100}%;width:${Math.max(0, r.projecao - r.gasto) / esc * 100}%;background:${cor}"></div><div class="m" style="left:${r.media / esc * 100}%"></div>`;
+      leg.textContent = `Barra: gasto até hoje, mais clara a projeção até o fim do mês. Traço: média mensal. ${acima ? '! Acima do ritmo médio.' : '✓ Abaixo do ritmo médio.'}`;
+    } else { meter.innerHTML = ''; leg.textContent = ''; err(leg, t); }
+    const rt = fillTable('pf-ritmo-tbl', 'ritmo', [['grupo'], ['atual', F.brl, 'n'], ['media', F.brl, 'n'], ['uso', (v) => v == null ? '—' : v + '%' + (v > 100 ? ' ▲' : ''), 'n']]);
+    if (rt.status === 'ok') document.querySelectorAll('#pf-ritmo-tbl tbody tr').forEach((tr, i) => { if (rt.data[i].uso > 100) tr.lastChild.classList.add('up'); });
+
+    // Cartões
+    const c = dash.data('cartoes'), box = document.getElementById('pf-cards');
+    if (c.status === 'ok') {
+      box.replaceChildren(...c.data.map((x) => {
+        const u = x.limite ? (x.limite - x.disponivel) / x.limite * 100 : 0;
+        const d = document.createElement('div'); d.style.marginBottom = 'var(--cds-gap-sm)';
+        d.innerHTML = `<div style="display:flex;justify-content:space-between;gap:8px"><b class="nm"></b><span class="pf-note" style="margin:0">${Math.round(u)}% do limite</span></div><div class="pf-meter"><div class="f" style="width:${Math.min(u, 100)}%;background:${u > window.pfParam('meta_limite') ? 'var(--cds-chart-status-critical)' : dash.colors[0]}"></div></div><div class="pf-note" style="margin:0">Fatura em aberto ≈ ${F.brl(x.fatura)} · limite ${F.brl(x.limite)}</div>`;
+        d.querySelector('.nm').textContent = x.cartao;
+        return d;
+      }));
+    } else { box.replaceChildren(); err(box, c); }
+    fillTable('pf-contas', 'contas', [['conta'], ['saldo', F.brl2, 'n']]);
+    fillTable('pf-parcelas', 'parcelas', [['mes', F.mes], ['valor', F.brl2, 'n']], 'mes');
+    fillTable('pf-rec', 'recorrentes', [['estabelecimento'], ['meses', null, 'n'], ['media', F.brl, 'n']]);
+  });
+})();
+</script>
+
+<script>
+(() => {
+  const F = window.pfFmt;
+  const tipFor = (host) => { let t = host.querySelector('.pf-tip'); if (!t) { t = document.createElement('div'); t.className = 'pf-tip'; host.appendChild(t); } return t; };
+  const showTip = (host, ev, html) => {
+    const t = tipFor(host); t.innerHTML = html; t.style.opacity = 1;
+    const b = host.getBoundingClientRect(), x = ev.clientX - b.left, y = ev.clientY - b.top;
+    const w = t.offsetWidth, h = t.offsetHeight;
+    t.style.left = Math.max(0, Math.min(x + 12, b.width - w)) + 'px';
+    t.style.top = Math.max(0, Math.min(y + 12, b.height - h)) + 'px';
+  };
+  const hideTip = (host) => { const t = host.querySelector('.pf-tip'); if (t) t.style.opacity = 0; };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const failed = (host, d) => { host.innerHTML = d.status === 'error' ? '<div class="pf-err">Falhou ao carregar</div>' : ''; };
+  const yAxis = (svg, y, W, L, fmt, ticks) => {
+    const g = svg.append('g');
+    y.ticks(ticks).forEach((v) => {
+      g.append('line').attr('x1', L).attr('x2', W).attr('y1', y(v)).attr('y2', y(v)).attr('stroke', v === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)');
+      g.append('text').attr('x', L - 6).attr('y', y(v) + 4).attr('text-anchor', 'end').text(fmt(v));
+    });
+  };
+  const xLabels = (svg, x, rows, H, W) => {
+    const every = W < 520 ? 3 : W < 760 ? 2 : 1;
+    rows.forEach((r, i) => { if ((rows.length - 1 - i) % every === 0) svg.append('text').attr('x', x(r.mes) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text(F.mes(r.mes)); });
+  };
+
+  function poupanca() {
+    const host = document.getElementById('pf-ch-poup');
+    const d = dash.data('poupanca_mensal');
+    if (d.status !== 'ok' || !d.data.length) { failed(host, d); return; }
+    const n = window.pfParam('periodo'), meta = window.pfParam('meta_poupanca');
+    const rows = d.data.slice(-n);
+    document.getElementById('pf-poup-note').textContent = `Quanto da renda sobrou em cada mês, últimos ${n} meses`;
+    const W = Math.max(280, host.clientWidth), H = 250, T = 12, B = 24;
+    host.innerHTML = '';
+    const svg = d3.select(host).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const vals = rows.map((r) => r.poupanca ?? 0);
+    const y = d3.scaleLinear([Math.min(-10, d3.min(vals)), Math.max(meta * 1.2, d3.max(vals))], [H - B, T]).nice(5);
+    const fmt = (v) => v + '%';
+    const L = 8 + d3.max(y.ticks(5), (v) => String(fmt(v)).length) * 6.5;
+    const x = d3.scaleBand(rows.map((r) => r.mes), [L, W]).padding(0.35);
+    yAxis(svg, y, W, L, fmt, 5);
+    const bw = Math.min(32, x.bandwidth());
+    rows.forEach((r, i) => {
+      const v = vals[i], x0 = x(r.mes) + (x.bandwidth() - bw) / 2, y0 = y(0), y1 = y(v);
+      svg.append('rect').attr('x', x0).attr('width', bw).attr('y', Math.min(y0, y1)).attr('height', Math.max(1, Math.abs(y1 - y0))).attr('rx', 4)
+        .attr('fill', v >= 0 ? dash.colors[0] : dash.colors[1]);
+      svg.append('rect').attr('x', x(r.mes) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', T).attr('height', H - T - B).attr('fill', 'transparent')
+        .on('mousemove', (ev) => showTip(host, ev, `<div class="t">${F.mes(r.mes)}</div><div class="r"><span>Poupança</span><span>${F.pct(r.poupanca)}</span></div><div class="r"><span>Entradas</span><span>${F.brl(r.receita)}</span></div><div class="r"><span>Saídas</span><span>${F.brl(r.despesa)}</span></div><div class="r"><span>${r.sobra >= 0 ? 'Sobrou' : 'Faltou'}</span><span>${F.brl(Math.abs(r.sobra))}</span></div>`))
+        .on('mouseleave', () => hideTip(host));
+    });
+    svg.append('line').attr('x1', L).attr('x2', W).attr('y1', y(meta)).attr('y2', y(meta)).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-width', 1.5).attr('stroke-dasharray', '5 4').attr('pointer-events', 'none');
+    svg.append('text').attr('x', W).attr('y', y(meta) - 5).attr('text-anchor', 'end').text('meta ' + F.num(meta) + '%');
+    xLabels(svg, x, rows, H, W);
+  }
+
+  function grupos() {
+    const host = document.getElementById('pf-ch-grupos'), leg = document.getElementById('pf-leg-grupos');
+    const g = dash.data('grupos'), m = dash.data('mensal');
+    if (g.status !== 'ok' || m.status !== 'ok') { failed(host, g.status === 'error' ? g : m); leg.innerHTML = ''; return; }
+    const n = window.pfParam('periodo');
+    const meses = m.data.slice(-n).map((r) => r.mes);
+    const renda = Object.fromEntries(m.data.map((r) => [r.mes, Number(r.receita)]));
+    const tot = d3.rollup(g.data, (v) => d3.sum(v, (x) => Number(x.valor)), (x) => x.grupo);
+    const ordem = [...tot.keys()].sort((a, b) => tot.get(b) - tot.get(a));
+    const top = ordem.slice(0, 6), series = [...top, ...(ordem.length > 6 ? ['Demais'] : [])];
+    const cor = (s) => dash.colors[series.indexOf(s)];
+    const val = {};
+    g.data.forEach((x) => { const s = top.includes(x.grupo) ? x.grupo : 'Demais'; val[x.mes] = val[x.mes] || {}; val[x.mes][s] = (val[x.mes][s] || 0) + Math.max(0, Number(x.valor)); });
+    leg.innerHTML = series.map((s) => `<span><i style="background:${cor(s)}"></i></span>`).join('') + '<span><span class="ln"></span>Renda</span>';
+    leg.querySelectorAll('span > i').forEach((i, k) => i.after(document.createTextNode(series[k])));
+    const W = Math.max(280, host.clientWidth), H = 300, T = 12, B = 24;
+    host.innerHTML = '';
+    const svg = d3.select(host).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const maxV = d3.max(meses, (mm) => Math.max(d3.sum(series, (s) => (val[mm] || {})[s] || 0), renda[mm] || 0));
+    const y = d3.scaleLinear([0, maxV], [H - B, T]).nice(5);
+    const fmt = (v) => (v / 1000).toLocaleString('pt-BR') + 'k';
+    const L = 8 + d3.max(y.ticks(5), (v) => fmt(v).length) * 6.5;
+    const x = d3.scaleBand(meses, [L, W]).padding(0.35);
+    yAxis(svg, y, W, L, fmt, 5);
+    const bw = Math.min(32, x.bandwidth());
+    meses.forEach((mm) => {
+      let acc = 0; const x0 = x(mm) + (x.bandwidth() - bw) / 2;
+      const presentes = series.filter((s) => (val[mm] || {})[s] > 0);
+      presentes.forEach((s, k) => {
+        const v = val[mm][s], ya = y(acc), yb = y(acc + v); acc += v;
+        const h = Math.max(0, ya - yb - (k ? 2 : 0));
+        svg.append('rect').attr('x', x0).attr('width', bw).attr('y', yb).attr('height', h).attr('fill', cor(s)).attr('rx', k === presentes.length - 1 ? 4 : 0);
+      });
+      svg.append('rect').attr('x', x(mm) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', T).attr('height', H - T - B).attr('fill', 'transparent')
+        .on('mousemove', (ev) => showTip(host, ev, `<div class="t">${F.mes(mm)}</div>` + series.slice().reverse().map((s) => `<div class="r"><span><i style="background:${cor(s)}"></i>${esc(s)}</span><span>${F.brl((val[mm] || {})[s] || 0)}</span></div>`).join('') + `<div class="r" style="border-top:1px solid var(--cds-border);margin-top:3px;padding-top:3px"><span>Renda</span><span>${F.brl(renda[mm])}</span></div>`))
+        .on('mouseleave', () => hideTip(host));
+    });
+    const line = d3.line().x((mm) => x(mm) + x.bandwidth() / 2).y((mm) => y(renda[mm] || 0));
+    svg.append('path').attr('d', line(meses)).attr('fill', 'none').attr('stroke', 'var(--color-fg)').attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round').attr('pointer-events', 'none');
+    meses.forEach((mm) => svg.append('circle').attr('cx', x(mm) + x.bandwidth() / 2).attr('cy', y(renda[mm] || 0)).attr('r', 4).attr('fill', 'var(--color-fg)').attr('stroke', 'var(--color-panel)').attr('stroke-width', 2).attr('pointer-events', 'none'));
+    xLabels(svg, x, meses.map((mm) => ({mes: mm})), H, W);
+  }
+
+  dash.onData(() => { poupanca(); grupos(); });
+})();
+</script>
