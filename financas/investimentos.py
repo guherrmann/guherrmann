@@ -120,7 +120,21 @@ def montar(transacoes, saldo, hoje, pasta_dados):
                              "ultimo_rend": None, "mes_ultimo": None,
                              "custo": None, "proventos": None, "desde": None, "valor_cdi": None})
 
-    carteira_hist = [x for x in b3_doc.get("mensal", []) if x["mes"] >= (meses[0] if meses else "")]
+    carteira_hist = b3_doc.get("mensal", [])
+    if b3_doc.get("posicoes_mensais") and meses:
+        import historico
+        inicio = dt.date(int(meses[0][:4]) - 1, int(meses[0][5:]), 1)  # 12 meses antes do gráfico, para o acumulado
+        janela = [x["mes"] for x in carteira_hist if x["mes"] >= inicio.strftime("%Y-%m")]
+        pos = {m: b3_doc["posicoes_mensais"].get(m) or b3_doc["posicoes_mensais"][max(b3_doc["posicoes_mensais"])] for m in janela}
+        tickers = sorted({t for p in pos.values() for t in p})
+        precos = historico.precos_fim_mes(tickers, janela, hoje, pathlib.Path(pasta_dados) / "precos_fim_mes.json")
+        custo = {x["mes"]: x["custo"] for x in carteira_hist}
+        anterior = {m: custo.get(janela[i - 1], 0) if i else custo.get(m, 0) for i, m in enumerate(janela)}
+        fluxos = {m: custo.get(m, 0) - anterior[m] for m in janela}
+        prov = {x["mes"]: x["proventos"] for x in carteira_hist}
+        ret = {r["mes"]: r for r in historico.retorno_mensal(pos, fluxos, prov, precos, janela)}
+        carteira_hist = [{**x, "valor": ret.get(x["mes"], {}).get("valor"), "retorno_mes": ret.get(x["mes"], {}).get("retorno_mes")}
+                         for x in carteira_hist if x["mes"] in ret]
     return {"carteira_hist": carteira_hist, "cenario": cenario, "cenario_hist": cenario_hist, "focus": focus, "tesouro": tesouro,
             "fundos": fundos, "etfs": etfs, "carteira": carteira}
 

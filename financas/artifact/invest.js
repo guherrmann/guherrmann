@@ -244,21 +244,22 @@ dash.calc('sugestoes_rv', {
 dash.calc('juros_hist', {
   inputs: ['cenario_hist', 'carteira_hist'],
   title: 'CDI, IPCA, poupança e sua carteira por mês',
-  description: 'CDI e IPCA 12 meses do Banco Central; poupança pela regra da Selic (0,5% ao mês + TR acima de 8,5%, senão 70% da Selic, sem TR); carteira: proventos dos últimos 12 meses ÷ custo médio das compras dos ativos que você tem hoje.',
+  description: 'CDI e IPCA 12 meses do Banco Central; poupança pela regra da Selic (0,5% ao mês + TR acima de 8,5%, senão 70% da Selic, sem TR); carteira: retorno total dos últimos 12 meses (cotações de fechamento da B3 + proventos, descontadas as compras, método de Dietz) e, à parte, só os proventos sobre o custo.',
   fn: (cenario_hist, carteira_hist) => {
     const atual = carteira_hist.length ? carteira_hist[carteira_hist.length - 1].mes : null;  // mês corrente, incompleto
     const completos = carteira_hist.filter((x) => x.mes !== atual);
     return cenario_hist.map((c) => {
       const selic = Number(c.selic);
       const i = completos.findIndex((x) => x.mes === c.mes);
-      let carteira = null;
+      let carteira = null, renda = null;
       if (i >= 11) {
         const jan = completos.slice(i - 11, i + 1);
         const custo = jan.reduce((s, x) => s + Number(x.custo), 0) / 12;
-        if (custo > 0) carteira = Math.round(jan.reduce((s, x) => s + Number(x.proventos), 0) / custo * 1000) / 10;
+        if (custo > 0) renda = Math.round(jan.reduce((s, x) => s + Number(x.proventos), 0) / custo * 1000) / 10;
+        if (jan.every((x) => x.retorno_mes != null)) carteira = Math.round((jan.reduce((f, x) => f * (1 + Number(x.retorno_mes)), 1) - 1) * 1000) / 10;
       }
       return {mes: c.mes, cdi: c.cdi == null ? null : Number(c.cdi), ipca_12m: c.ipca_12m == null ? null : Number(c.ipca_12m),
-        poupanca: isNaN(selic) ? null : selic > 8.5 ? 6.17 : Math.round(selic * 70) / 100, carteira};
+        poupanca: isNaN(selic) ? null : selic > 8.5 ? 6.17 : Math.round(selic * 70) / 100, carteira, renda};
     });
   },
 });
@@ -439,18 +440,20 @@ dash.calc('revisar', {
     const rows = d.data.filter((r) => r.cdi != null && r.ipca_12m != null);
     if (!rows.length) { host.replaceChildren(); return; }
     const series = [['cdi', 0, 'CDI'], ['ipca_12m', 1, 'IPCA 12m'], ['poupanca', 2, 'Poupança'], ['carteira', 3, 'Minha carteira']];
+    const extra = [['renda', 'só proventos']];
     const W = Math.max(300, host.clientWidth), H = 250, T = 14, B = 24;
     host.innerHTML = '';
     const svg = d3.select(host).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
     const medir = (txt) => { const n = svg.append('text').text(txt); const w = n.node().getComputedTextLength(); n.remove(); return w; };
     const max = d3.max(rows, (r) => Math.max(...series.map(([k]) => r[k] ?? 0)));
-    const y = d3.scaleLinear([0, max * 1.1], [H - B, T]).nice(4);
+    const min = Math.min(0, d3.min(rows, (r) => Math.min(...series.map(([k]) => r[k] ?? 0))));
+    const y = d3.scaleLinear([min * 1.1, max * 1.1], [H - B, T]).nice(5);
     const fmt = (v) => v + '%';
-    const L = 10 + d3.max(y.ticks(4), (v) => medir(fmt(v)));
+    const L = 10 + d3.max(y.ticks(5), (v) => medir(fmt(v)));
     const ultimos = series.map(([k, c, nome]) => { const u = [...rows].reverse().find((r) => r[k] != null); return u ? {k, c, nome, u, txt: `${nome} ${pc1(u[k])}`} : null; }).filter(Boolean);
     const R = 14 + d3.max(ultimos, (s) => medir(s.txt));
     const x = d3.scalePoint(rows.map((r) => r.mes), [L, W - R]);
-    y.ticks(4).forEach((v) => {
+    y.ticks(5).forEach((v) => {
       svg.append('line').attr('x1', L).attr('x2', W - R).attr('y1', y(v)).attr('y2', y(v)).attr('stroke', v === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)');
       svg.append('text').attr('x', L - 6).attr('y', y(v) + 4).attr('text-anchor', 'end').text(fmt(v));
     });
@@ -475,7 +478,8 @@ dash.calc('revisar', {
         const i = Math.max(0, Math.min(rows.length - 1, Math.round((mx - L) / ((W - R - L) / (rows.length - 1 || 1)))));
         const r = rows[i];
         rule.attr('x1', x(r.mes)).attr('x2', x(r.mes)).attr('opacity', 1);
-        tip.innerHTML = `<div class="t">${F.mes(r.mes)}</div>` + series.map(([k, c, nome]) => `<div class="r"><span><i style="background:${dash.colors[c]}"></i>${nome}</span><span>${pc2(r[k])}</span></div>`).join('');
+        tip.innerHTML = `<div class="t">${F.mes(r.mes)}</div>` + series.map(([k, c, nome]) => `<div class="r"><span><i style="background:${dash.colors[c]}"></i>${nome}</span><span>${pc2(r[k])}</span></div>`).join('')
+          + extra.map(([k, nome]) => `<div class="r"><span style="padding-left:13px">${nome}</span><span>${pc2(r[k])}</span></div>`).join('');
         tip.style.opacity = 1;
         const b = host.getBoundingClientRect();
         tip.style.left = Math.max(0, Math.min(ev.clientX - b.left + 12, b.width - tip.offsetWidth)) + 'px';

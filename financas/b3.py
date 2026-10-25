@@ -110,6 +110,39 @@ def historico_mensal(linhas, ativos_atuais, hoje):
     return out
 
 
+def posicoes_mensais(linhas, ativos_atuais, hoje):
+    """{mes: {ativo: cotas no fim do mês}} dos ativos atuais, somando compras, vendas, desdobros,
+    bonificações e frações vendidas desde o início do extrato. Ativos cuja soma não bate com a
+    posição atual são deixados de fora (o histórico deles começa antes do extrato)."""
+    atuais = {a: p["cotas"] for a, p in ativos_atuais.items() if not a.startswith("Tesouro")}
+    delta = collections.defaultdict(lambda: collections.defaultdict(float))
+    for e in linhas:
+        if e["ativo"] not in atuais:
+            continue
+        mes = e["data"].strftime("%Y-%m")
+        if e["mov"] == COMPRA_VENDA or e["mov"] in ("Transferência", "Transferencia"):
+            delta[e["ativo"]][mes] += e["qtd"] if e["sentido"] == "Credito" else -e["qtd"]
+        elif e["mov"] in ("Desdobro", "Bonificação em Ativos") and e["sentido"] == "Credito":
+            delta[e["ativo"]][mes] += e["qtd"]
+        elif e["mov"] == "Fração em Ativos" and e["sentido"] == "Debito":
+            delta[e["ativo"]][mes] -= e["qtd"]
+    validos = {a for a in atuais if abs(sum(delta[a].values()) - atuais[a]) < 0.01}
+    for a in set(atuais) - validos:
+        print(f"  aviso: histórico de {a} não fecha com a posição atual; fica fora do retorno mensal", file=sys.stderr)
+    if not validos:
+        return {}
+    inicio = min(m for a in validos for m in delta[a])
+    out, saldo = {}, collections.defaultdict(float)
+    y, m = map(int, inicio.split("-"))
+    while (y, m) <= (hoje.year, hoje.month):
+        mes = f"{y}-{m:02d}"
+        for a in validos:
+            saldo[a] += delta[a].get(mes, 0.0)
+        out[mes] = {a: round(q, 4) for a, q in saldo.items() if q > 0.0001}
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    return out
+
+
 def _fator_cdi(cdi_mensal, inicio, fim):
     f = 1.0
     for mes, taxa in sorted(cdi_mensal.items()):
@@ -133,7 +166,7 @@ def main():
     pos = posicao(linhas, hoje, cdi)
     DADOS.mkdir(exist_ok=True)
     saida = {"gerado_em": hoje.isoformat(), "periodo": [linhas[0]["data"].isoformat(), linhas[-1]["data"].isoformat()], "ativos": pos,
-             "mensal": historico_mensal(linhas, pos, hoje)}
+             "mensal": historico_mensal(linhas, pos, hoje), "posicoes_mensais": posicoes_mensais(linhas, pos, hoje)}
     (DADOS / "b3_posicao.json").write_text(json.dumps(saida, ensure_ascii=False, indent=1))
     for a, p in sorted(pos.items()):
         print(f"{a:20} {p['cotas']:>8} custo={p['custo']} proventos={p['proventos']} cdi={p['valor_cdi']} desde={p['desde']}")
