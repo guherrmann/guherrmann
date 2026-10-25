@@ -1,0 +1,4 @@
+# Dados financeiros pessoais: nunca versionar
+financas/dados/
+financas/saida/
+__pycache__/

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel Financeiro</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f6f5f2; --surface:#fcfcfb; --line:#e4e2dc; --grid:#ecebe6;
+  --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7974; --chip:#f0efec;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --good:#0a7d0a; --warn:#9a6a00; --crit:#c42f2f; --target:#52514e;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --line:#2e2e2b; --grid:#262624;
+    --ink:#f0efec; --ink2:#c3c2b7; --ink3:#8f8e87; --chip:#262624;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --good:#2fbf2f; --warn:#e0a520; --crit:#e66767; --target:#c3c2b7;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --line:#2e2e2b; --grid:#262624;
+  --ink:#f0efec; --ink2:#c3c2b7; --ink3:#8f8e87; --chip:#262624;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --good:#2fbf2f; --warn:#e0a520; --crit:#e66767; --target:#c3c2b7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 16px 64px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+h1{font-size:26px;margin:0;letter-spacing:-.01em}
+h2{font-size:16px;margin:0 0 2px}
+.sub{color:var(--ink2);margin:0 0 12px;font-size:13.5px}
+.muted{color:var(--ink3)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;margin-top:16px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:440px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi .l{font-size:13px;color:var(--ink2)}
+.kpi .v{font-size:28px;font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .n{font-size:12.5px;color:var(--ink3)}
+.st{display:inline-flex;gap:5px;align-items:center;font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--chip);width:max-content;margin-top:6px}
+.st.good{color:var(--good)} .st.warning{color:var(--warn)} .st.critical{color:var(--crit)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+@media (max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink2);margin:4px 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.legend .ln{display:inline-block;width:14px;border-top:2px dashed var(--target);margin-right:6px;vertical-align:3px}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{fill:var(--ink3);font-size:11px;font-family:inherit}
+.tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.14);opacity:0;transition:opacity .08s;z-index:9;min-width:170px}
+.tip b{display:block;margin-bottom:3px}
+.tip .r{display:flex;justify-content:space-between;gap:14px;font-variant-numeric:tabular-nums}
+.tip .r i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--grid)}
+th{font-size:12px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tscroll{overflow-x:auto}
+.meter{position:relative;height:10px;border-radius:5px;background:var(--grid);margin:8px 0 4px}
+.meter .f{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--s1)}
+.meter .p{position:absolute;top:0;bottom:0;border-radius:0 5px 5px 0;background:var(--s1);opacity:.35}
+.meter .m{position:absolute;top:-4px;bottom:-4px;border-left:2px solid var(--ink)}
+.big{font-size:30px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.row{display:flex;gap:24px;flex-wrap:wrap;margin-top:8px}
+.row>div{min-width:140px}
+.delta.up{color:var(--crit)} .delta.down{color:var(--good)}
+details summary{cursor:pointer;color:var(--ink2);font-size:13.5px;margin-top:4px}
+.notes li{margin:4px 0;color:var(--ink2);font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Painel financeiro</h1>
+      <div class="sub" id="periodo" style="margin:4px 0 0"></div>
+    </div>
+    <div class="sub" id="atualizado" style="margin:0"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid3">
+    <div class="card">
+      <h2 id="mesTitulo"></h2>
+      <p class="sub">Gasto até hoje comparado à sua média mensal dos últimos 12 meses</p>
+      <div class="row" id="mesNums"></div>
+      <div class="meter" id="mesMeter"></div>
+      <div class="muted" style="font-size:12.5px" id="mesLegenda"></div>
+      <div class="tscroll" style="margin-top:14px"><table id="mesGrupos"></table></div>
+    </div>
+    <div class="card">
+      <h2>Cartões e contas</h2>
+      <p class="sub">Uso do limite e saldos atuais</p>
+      <div id="cartoes"></div>
+      <div id="contas" style="margin-top:14px"></div>
+      <h2 style="margin-top:18px">Parcelas a vencer</h2>
+      <div id="parcelas"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Taxa de poupança por mês</h2>
+    <p class="sub">Quanto da renda sobrou em cada mês. A linha tracejada é a meta.</p>
+    <div class="legend"><span><i style="background:var(--s1)"></i>Sobrou</span><span><i style="background:var(--s2)"></i>Faltou</span><span><span class="ln"></span>Meta</span></div>
+    <div id="chPoup"></div>
+  </div>
+
+  <div class="card">
+    <h2>Para onde vai o dinheiro, mês a mês</h2>
+    <p class="sub">Saídas por grupo. A linha mostra a renda do mês.</p>
+    <div class="legend" id="legGrupos"></div>
+    <div id="chGrupos"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Gastos recorrentes</h2>
+      <p class="sub">Estabelecimentos presentes em 6 meses ou mais</p>
+      <div class="tscroll"><table id="recorrentes"></table></div>
+    </div>
+    <div class="card">
+      <h2>Indicadores: como ler</h2>
+      <div class="tscroll"><table id="guia"></table></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Tabela mensal</h2>
+    <details><summary>Ver os números de cada mês</summary>
+      <div class="tscroll" style="margin-top:10px"><table id="tabela"></table></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Como os números são calculados</h2>
+    <ul class="notes">
+      <li><b>Entradas</b>: créditos em conta (salário, PIX recebidos, rendimentos). <b>Saídas</b>: compras no cartão, no mês de vencimento de cada parcela e com estornos descontados, mais os débitos em conta.</li>
+      <li>Ficam de fora: pagamentos de fatura, transferências entre contas suas e aplicações em investimentos.</li>
+      <li>Os indicadores anuais usam os 12 últimos meses <b>completos</b>. O mês atual aparece só no quadro de ritmo.</li>
+      <li>Contas correntes sem movimentação no Open Finance (Itaú, Nubank) podem deixar as entradas subestimadas.</li>
+    </ul>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const D = __DADOS__;
+const brl = v => (v??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const brl2 = v => (v??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const pct = v => v==null ? '–' : v.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
+const num1 = v => v==null ? '–' : v.toLocaleString('pt-BR',{maximumFractionDigits:1});
+const MN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const MNF=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const ml = m => {const [y,mm]=m.split('-');return MN[+mm-1]+'/'+y.slice(2);};
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ST = {good:['✓','Dentro da meta'],warning:['!','Atenção'],critical:['✕','Fora da meta']};
+const stBadge = s => `<span class="st ${s}">${ST[s][0]} ${ST[s][1]}</span>`;
+const I=D.indicadores, S=D.status, M=D.metas, T=D.totais;
+
+document.getElementById('periodo').textContent = `Últimos 12 meses completos: ${ml(D.meses[0])} a ${ml(D.meses[D.meses.length-1])}`;
+document.getElementById('atualizado').textContent = 'Atualizado em ' + new Date(D.gerado_em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+
+// KPIs
+const kpis=[
+  {k:'poupanca',l:'Taxa de poupança (12 meses)',v:pct(I.poupanca),n:`sobrou ${brl(T.renda_12m-T.despesa_12m)} · meta ≥ ${M.poupanca}%`},
+  {k:'poupanca_3m',l:'Taxa de poupança (3 meses)',v:pct(I.poupanca_3m),n:'tendência recente'},
+  {k:'reserva',l:'Reserva de emergência',v:num1(I.reserva)+' meses',n:`${brl(T.saldo)} em conta · meta ${M.reserva} meses`},
+  {k:'fixos',l:'Gastos fixos / renda',v:pct(I.fixos),n:`moradia, contas, seguros · meta ≤ ${M.fixos}%`},
+  {k:'carro',l:'Carro e transporte / renda',v:pct(I.carro),n:`${brl(T.carro_12m)} no ano · meta ≤ ${M.carro}%`},
+  {k:'comer_fora',l:'Restaurante e delivery / renda',v:pct(I.comer_fora),n:`${brl(T.comer_fora_12m)} no ano · meta ≤ ${M.comer_fora}%`},
+  {k:'limite',l:'Uso do limite dos cartões',v:pct(I.limite),n:`${brl(T.limite_usado)} de ${brl(T.limite_total)} · meta ≤ ${M.limite}%`},
+  {k:'parcelas',l:'Parcelas futuras / renda mensal',v:pct(I.parcelas),n:`${brl(T.parcelas_futuras)} a vencer · meta ≤ ${M.parcelas}%`},
+];
+document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="l">${k.l}</div><div class="v">${k.v}</div><div class="n">${k.n}</div>${stBadge(S[k.k])}</div>`).join('');
+
+// Mês atual
+const MA=D.mes_atual; const [ay,am]=MA.mes.split('-');
+document.getElementById('mesTitulo').textContent = `Ritmo de ${MNF[+am-1]} (até o dia ${MA.dia})`;
+const ritmoEsperado = MA.media*MA.dia/MA.dias;
+const acima = MA.despesa>ritmoEsperado;
+document.getElementById('mesNums').innerHTML = `
+  <div><div class="muted" style="font-size:13px">Gasto até agora</div><div class="big">${brl(MA.despesa)}</div></div>
+  <div><div class="muted" style="font-size:13px">Projeção do mês</div><div class="big">${brl(MA.projecao)}</div></div>
+  <div><div class="muted" style="font-size:13px">Média mensal</div><div class="big">${brl(MA.media)}</div></div>
+  <div><div class="muted" style="font-size:13px">Entradas no mês</div><div class="big">${brl(MA.receita)}</div></div>`;
+const escala=Math.max(MA.projecao,MA.media)*1.08;
+document.getElementById('mesMeter').innerHTML = `<div class="f" style="width:${MA.despesa/escala*100}%"></div><div class="p" style="left:${MA.despesa/escala*100}%;width:${Math.max(0,MA.projecao-MA.despesa)/escala*100}%"></div><div class="m" style="left:${MA.media/escala*100}%" title="média mensal"></div>`;
+document.getElementById('mesLegenda').innerHTML = `Barra cheia: gasto até hoje · clara: projeção até o fim do mês · traço: média mensal. ${stBadge(acima?'warning':'good').replace(ST[acima?'warning':'good'][1], acima?'Acima do ritmo médio':'Abaixo do ritmo médio')}`;
+document.getElementById('mesGrupos').innerHTML = `<tr><th>Grupo</th><th class="num">Este mês</th><th class="num">Média</th><th class="num">Uso da média</th></tr>`+
+  MA.grupos.filter(g=>g.media>0||g.atual>0).map(g=>{const u=g.media?g.atual/g.media*100:null;const cls=u!=null&&u>100?'up':'';
+  return `<tr><td>${esc(g.grupo)}</td><td class="num">${brl(g.atual)}</td><td class="num">${brl(g.media)}</td><td class="num"><span class="delta ${cls}">${u==null?'–':Math.round(u)+'%'}${cls?' ▲':''}</span></td></tr>`}).join('');
+
+// Cartões, contas, parcelas
+document.getElementById('cartoes').innerHTML = D.cartoes.map(c=>{const u=c.limite?(c.limite-c.disponivel)/c.limite*100:0;
+  return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><b>${esc(c.nome)}</b><span class="muted" style="font-size:13px">${Math.round(u)}% usado</span></div>
+  <div class="meter"><div class="f" style="width:${Math.min(u,100)}%"></div></div>
+  <div class="muted" style="font-size:12.5px">Fatura em aberto ≈ ${brl(c.fatura)} · limite ${brl(c.limite)}</div></div>`}).join('');
+document.getElementById('contas').innerHTML = `<table>${D.contas.map(a=>`<tr><td>${esc(a.nome)}</td><td class="num">${brl2(a.saldo)}</td></tr>`).join('')}<tr><td><b>Total em conta</b></td><td class="num"><b>${brl2(T.saldo)}</b></td></tr></table>`;
+const pm=Object.entries(D.parcelas_por_mes);
+document.getElementById('parcelas').innerHTML = pm.length? `<table>${pm.map(([m,v])=>`<tr><td>${ml(m)}</td><td class="num">${brl2(v)}</td></tr>`).join('')}</table>` : '<p class="muted">Nenhuma parcela a vencer.</p>';
+
+// Recorrentes, guia, tabela
+document.getElementById('recorrentes').innerHTML = `<tr><th>Estabelecimento</th><th class="num">Meses</th><th class="num">Média/mês</th></tr>`+
+  D.recorrentes.map(r=>`<tr><td>${esc(r.nome)}</td><td class="num">${r.meses}</td><td class="num">${brl(r.media)}</td></tr>`).join('');
+const guia=[['Taxa de poupança','Quanto da renda sobra. 20% é saudável; abaixo de 10% não cria patrimônio.'],
+ ['Reserva de emergência','Meses de gastos cobertos pelo dinheiro em conta. 3 é o mínimo, 6 o ideal.'],
+ ['Gastos fixos','Contas que vêm todo mês. Acima de 50% da renda, sobra pouca margem.'],
+ ['Carro e transporte','Combustível, manutenção, seguro, pedágio e estacionamento. Até 15% da renda.'],
+ ['Restaurante e delivery','Gasto mais fácil de ajustar. Até 5% da renda.'],
+ ['Limite do cartão','Acima de 30% de uso, o risco de a fatura apertar o mês cresce.'],
+ ['Parcelas futuras','Renda dos próximos meses já comprometida. Até 10% de uma renda mensal.']];
+document.getElementById('guia').innerHTML = guia.map(([a,b])=>`<tr><td style="width:36%"><b>${a}</b></td><td class="muted" style="font-size:13.5px">${b}</td></tr>`).join('');
+const SR=D.serie;
+document.getElementById('tabela').innerHTML = `<tr><th>Mês</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Sobra</th><th class="num">Poupança</th><th class="num">Fixos</th></tr>`+
+  D.meses.map((m,i)=>`<tr><td>${ml(m)}</td><td class="num">${brl(SR.receita[i])}</td><td class="num">${brl(SR.despesa[i])}</td><td class="num">${brl(SR.receita[i]-SR.despesa[i])}</td><td class="num">${pct(SR.poupanca[i])}</td><td class="num">${brl(SR.fixos[i])}</td></tr>`).join('');
+
+// Charts
+const tip=document.getElementById('tip');
+const showTip=(e,h)=>{tip.innerHTML=h;tip.style.opacity=1;tip.style.left=Math.min(e.clientX+14,innerWidth-220)+'px';tip.style.top=(e.clientY+14)+'px';};
+const hideTip=()=>tip.style.opacity=0;
+const NS='http://www.w3.org/2000/svg';
+const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e;};
+const nice=v=>{const s=v/4,p=Math.pow(10,Math.floor(Math.log10(s)));for(const m of [1,1.5,2,2.5,3,4,5,6,8,10])if(m*p>=s)return m*p*4;return 40*p;};
+function axis(svg,W,top,h,L,min,max,n,fmt){for(let i=0;i<=n;i++){const v=min+(max-min)*i/n,y=top+h-(v-min)/(max-min)*h;
+  el('line',{x1:L,x2:W,y1:y,y2:y,stroke:Math.abs(v)<1e-9?'var(--ink3)':'var(--grid)','stroke-width':1},svg);
+  el('text',{x:L-6,y:y+4,'text-anchor':'end'},svg).textContent=fmt(v);}}
+const bar=(x,y0,w,hgt,up)=>{const r=Math.min(4,hgt,w/2);return up?`M${x},${y0} V${y0-hgt+r} q0,-${r} ${r},-${r} h${w-2*r} q${r},0 ${r},${r} V${y0} Z`:`M${x},${y0} V${y0+hgt-r} q0,${r} ${r},${r} h${w-2*r} q${r},0 ${r},-${r} V${y0} Z`;};
+
+(function poupanca(){
+  const W=1000,H=240,L=44,T0=12,B=26,h=H-T0-B,n=D.meses.length,cw=(W-L)/n,v=SR.poupanca.map(x=>x??0);
+  const rawHi=Math.max(M.poupanca*1.2,...v), rawLo=Math.min(-5,...v), step=nice((rawHi-rawLo)*4/5)/4;
+  const hi=Math.ceil(rawHi/step)*step, lo=Math.floor(rawLo/step)*step;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Taxa de poupança mensal'});
+  axis(svg,W,T0,h,L,lo,hi,Math.round((hi-lo)/step),x=>Math.round(x)+'%');
+  const Y=x=>T0+h-(x-lo)/(hi-lo)*h, y0=Y(0);
+  v.forEach((x,i)=>{const bw=Math.min(34,cw*.55),bx=L+i*cw+(cw-bw)/2,bh=Math.abs(Y(x)-y0);
+    el('path',{d:bar(bx,y0,bw,bh,x>=0),fill:x>=0?'var(--s1)':'var(--s2)'},svg);
+    el('text',{x:L+i*cw+cw/2,y:H-8,'text-anchor':'middle'},svg).textContent=ml(D.meses[i]);
+    const hit=el('rect',{x:L+i*cw,y:T0,width:cw,height:h,fill:'transparent'},svg);
+    hit.addEventListener('mousemove',e=>showTip(e,`<b>${ml(D.meses[i])}</b><div class="r"><span>Poupança</span><span>${pct(SR.poupanca[i])}</span></div><div class="r"><span>Sobra</span><span>${brl(SR.receita[i]-SR.despesa[i])}</span></div>`));
+    hit.addEventListener('mouseleave',hideTip);});
+  el('line',{x1:L,x2:W,y1:Y(M.poupanca),y2:Y(M.poupanca),stroke:'var(--target)','stroke-width':1.5,'stroke-dasharray':'5 4'},svg);
+  el('text',{x:W,y:Y(M.poupanca)-6,'text-anchor':'end',style:'fill:var(--ink2)'},svg).textContent='meta '+M.poupanca+'%';
+  document.getElementById('chPoup').appendChild(svg);
+})();
+
+(function grupos(){
+  const nomes=Object.keys(SR.grupos), top=nomes.slice(0,6), resto=nomes.slice(6);
+  const series=top.map(g=>({nome:g,v:SR.grupos[g]}));
+  if(resto.length) series.push({nome:'Demais',v:D.meses.map((_,i)=>resto.reduce((s,g)=>s+Math.max(0,SR.grupos[g][i]),0))});
+  series.forEach((s,i)=>s.cor=`var(--s${i+1})`);
+  document.getElementById('legGrupos').innerHTML=series.map(s=>`<span><i style="background:${s.cor}"></i>${esc(s.nome)}</span>`).join('')+`<span><span class="ln" style="border-top-style:solid;border-color:var(--ink)"></span>Renda</span>`;
+  const W=1000,H=320,L=44,T0=12,B=26,h=H-T0-B,n=D.meses.length,cw=(W-L)/n;
+  const tot=D.meses.map((_,i)=>series.reduce((s,x)=>s+Math.max(0,x.v[i]),0));
+  const max=nice(Math.max(...tot,...SR.receita)*1.05);
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Saídas por grupo e renda mensal'});
+  axis(svg,W,T0,h,L,0,max,4,x=>(x/1000).toLocaleString('pt-BR')+'k');
+  const Y=x=>T0+h-x/max*h;
+  D.meses.forEach((m,i)=>{const bw=Math.min(34,cw*.55),bx=L+i*cw+(cw-bw)/2;let acc=0;
+    series.forEach((s,j)=>{const v=Math.max(0,s.v[i]);if(!v)return;const y1=Y(acc),y2=Y(acc+v);acc+=v;
+      const last=j===series.length-1||series.slice(j+1).every(z=>!Math.max(0,z.v[i]));
+      const hh=Math.max(0,y1-y2-(acc>v?2:0));
+      if(last) el('path',{d:bar(bx,y1-(acc>v?2:0),bw,hh,true),fill:s.cor},svg);
+      else el('rect',{x:bx,y:y2,width:bw,height:hh,fill:s.cor},svg);});
+    el('text',{x:L+i*cw+cw/2,y:H-8,'text-anchor':'middle'},svg).textContent=ml(m);
+    const hit=el('rect',{x:L+i*cw,y:T0,width:cw,height:h,fill:'transparent'},svg);
+    hit.addEventListener('mousemove',e=>showTip(e,`<b>${ml(m)}</b>`+series.slice().reverse().map(s=>`<div class="r"><span><i style="background:${s.cor}"></i>${esc(s.nome)}</span><span>${brl(s.v[i])}</span></div>`).join('')+`<div class="r" style="border-top:1px solid var(--line);margin-top:3px;padding-top:3px"><span>Total saídas</span><span>${brl(SR.despesa[i])}</span></div><div class="r"><span>Renda</span><span>${brl(SR.receita[i])}</span></div>`));
+    hit.addEventListener('mouseleave',hideTip);});
+  const pts=SR.receita.map((r,i)=>`${L+i*cw+cw/2},${Y(r)}`).join(' ');
+  el('polyline',{points:pts,fill:'none',stroke:'var(--ink)','stroke-width':2,'stroke-linejoin':'round','pointer-events':'none'},svg);
+  SR.receita.forEach((r,i)=>el('circle',{cx:L+i*cw+cw/2,cy:Y(r),r:4,fill:'var(--ink)',stroke:'var(--surface)','stroke-width':2,'pointer-events':'none'},svg));
+  document.getElementById('chGrupos').appendChild(svg);
+})();
+</script>
+</body>
+</html>
