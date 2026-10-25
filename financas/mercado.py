@@ -74,7 +74,14 @@ def sgs(codigo, inicio=None, ultimos=None):
     else:
         url = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados?formato=json"
                f"&dataInicial={inicio.strftime('%d/%m/%Y')}")
-    linhas = json.loads(_get(url))
+    for tentativa in range(4):  # o SGS às vezes devolve corpo vazio ou HTML; tentar de novo resolve
+        try:
+            linhas = json.loads(_get(url))
+            break
+        except ValueError:
+            if tentativa == 3:
+                raise
+            time.sleep(5 * (tentativa + 1))
     return [(dt.datetime.strptime(x["data"], "%d/%m/%Y").date(), float(x["valor"])) for x in linhas]
 
 
@@ -92,6 +99,8 @@ def cenario(hoje):
     atual = {}
     for nome, cod in SGS.items():
         serie = sorted(x for x in sgs(cod, ultimos=20) if x[0] <= hoje)  # a Selic meta já vem com datas futuras
+        if not serie:
+            serie = sorted(x for x in sgs(cod, inicio=hoje - dt.timedelta(days=90)) if x[0] <= hoje)
         atual[nome] = serie[-1]
     inicio = dt.date(hoje.year - 2, hoje.month, 1)
     hist = {}

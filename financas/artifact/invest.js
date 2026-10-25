@@ -145,17 +145,49 @@ dash.calc('carteira_total', {
     const meses = carteira.map((c) => c.mes_ultimo).filter(Boolean).sort();
     const ult = meses[meses.length - 1];
     const mes = carteira.filter((c) => c.mes_ultimo === ult).reduce((s, c) => s + (Number(c.ultimo_rend) || 0), 0);
-    return [{total, rv, caixa: total - rv, rend_12m: rend, renda_mes: mes, mes_renda: ult || null, yield_rv: rv ? Math.round(mes * 12 / rv * 1000) / 10 : null,
+    return [{total, rv, caixa: total - rv, rend_12m: rend, renda_mes: mes, mes_renda: ult || null, yield_rv: (() => { const v = soma((c) => ['FII', 'Fiagro', 'Ação', 'ETF'].includes(c.classe)); const m = carteira.filter((c) => c.mes_ultimo === ult && ['FII', 'Fiagro', 'Ação', 'ETF'].includes(c.classe)).reduce((s, c) => s + (Number(c.ultimo_rend) || 0), 0); return v ? Math.round(m * 12 / v * 1000) / 10 : null; })(),
       parte_caixa: total ? Math.round((total - rv) / total * 1000) / 10 : null,
       resultado, resultado_pct: custo ? Math.round(resultado / custo * 1000) / 10 : null, vs_cdi: vsCdi}];
   },
 });
 
+dash.calc('credito_privado', {
+  inputs: ['carteira', 'juros', 'carteira_total'],
+  title: 'Crédito privado',
+  description: 'Investimentos fora da bolsa sem FGC (ex.: CRA na INCO): taxa, equivalente num CDB com IR de 15%, percentual do CDI e peso no patrimônio.',
+  fn: (carteira, juros, carteira_total) => {
+    const j = juros[0], tot = carteira_total[0] ? carteira_total[0].total : 0;
+    return carteira.filter((c) => c.classe === 'Crédito privado').map((c) => {
+      const equiv = c.isento ? c.taxa_aa / 0.85 : c.taxa_aa;
+      return {ativo: c.ativo, plataforma: c.plataforma, taxa_aa: c.taxa_aa, isento: !!c.isento, equiv_cdb: Math.round(equiv * 100) / 100,
+        pct_cdi: j ? Math.round(equiv / j.cdi * 100) : null, valor: c.valor, parte: tot ? Math.round(c.valor / tot * 1000) / 10 : null,
+        risco: c.risco, vencimento: c.vencimento, liquidez: c.liquidez, garantia: c.garantia};
+    });
+  },
+});
+
+dash.calc('recebimentos_resumo', {
+  inputs: ['recebimentos'],
+  title: 'Recebimentos programados',
+  description: 'Parcelas a receber de investimentos com calendário fixo, divididas em juros e devolução do capital, no total e nos próximos 12 meses.',
+  fn: (recebimentos) => {
+    const futuras = recebimentos.filter((r) => !r.recebido).sort((a, b) => a.data.localeCompare(b.data));
+    if (!futuras.length) return [];
+    const ate = new Date(futuras[0].data); ate.setFullYear(ate.getFullYear() + 1);
+    const prox = futuras.filter((r) => new Date(r.data) < ate);
+    const soma = (l, k) => Math.round(l.reduce((s, r) => s + Number(r[k]), 0) * 100) / 100;
+    return [{a_receber: soma(futuras, 'valor'), juros_total: soma(futuras, 'juros'), devolucao_total: soma(futuras, 'amortizacao'),
+      prox_12m: soma(prox, 'valor'), prox_12m_devolucao: soma(prox, 'amortizacao'), proxima_data: futuras[0].data, proxima_valor: futuras[0].valor,
+      ultima_data: futuras[futuras.length - 1].data}];
+  },
+});
+
 dash.calc('sugestoes_rf', {
-  inputs: ['juros', 'caixa', 'reserva', 'tesouro', 'rf_opcoes'],
+  inputs: ['juros', 'caixa', 'reserva', 'tesouro', 'rf_opcoes', 'carteira'],
   title: 'Sugestões de renda fixa',
   description: 'Regras: dinheiro parado em conta, tamanho da reserva, juro real do IPCA+, prefixado contra a Selic esperada pelo Focus e equivalência LCI/LCA × CDB.',
-  fn: (juros, caixa, reserva, tesouro, rf_opcoes) => {
+  fn: (juros, caixa, reserva, tesouro, rf_opcoes, carteira) => {
+    const carteira_cp = carteira;
     const j = juros[0], r = reserva[0];
     if (!j || !r) return [];
     const brl = (v) => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
@@ -186,6 +218,13 @@ dash.calc('sugestoes_rf', {
       const eq = 0.9 / (1 - 0.175) * 100;
       out.push({ordem: 5, nivel: 'info', titulo: 'LCI e LCA: compare pela taxa líquida',
         texto: `Uma LCI/LCA de 90% do CDI equivale a um CDB de ${Math.round(eq)}% do CDI entre 1 e 2 anos (IR de 17,5%). Só vale a pena se você puder deixar o dinheiro pela carência, de 9 a 12 meses. Use a calculadora ao lado com a oferta real.`});
+    }
+    const cp = carteira_cp.filter((c) => c.classe === 'Crédito privado');
+    if (cp.length) {
+      const valorCp = cp.reduce((s, c) => s + c.valor, 0), patrimonio = carteira_cp.reduce((s, c) => s + (Number(c.valor) || 0), 0);
+      const parte = patrimonio ? valorCp / patrimonio * 100 : 0;
+      out.push({ordem: 5.5, nivel: parte > 10 ? 'media' : 'ok', titulo: `Crédito privado sem FGC: ${pc(Math.round(parte * 10) / 10)} do patrimônio`,
+        texto: `${cp.map((c) => `${c.ativo} a ${pc(c.taxa_aa)} ao ano${c.isento ? ' isento' : ''}, até ${c.vencimento.split('-').reverse().join('/')}`).join('; ')}. ${parte > 10 ? 'Passa de 10% do patrimônio: evite aumentar antes de completar a reserva e prefira dividir entre vários emissores.' : 'Abaixo de 10% do patrimônio, um limite prudente para papéis sem FGC e sem liquidez. Se for aplicar mais, divida entre vários emissores.'} As parcelas que devolvem capital não são renda: reinvista essa parte.`});
     }
     out.push({ordem: 6, nivel: 'info', titulo: 'CRI e CRA',
       texto: `São isentos de IR, mas não têm FGC: o risco é de quem emitiu. Para valer a pena, o prêmio sobre o Tesouro IPCA+${ipca ? ` (IPCA + ${pc(ipca.taxa_compra)})` : ''} precisa compensar esse risco e a liquidez menor. Hoje você já tem exposição a eles pelos FIIs de papel e Fiagros.`});
@@ -514,7 +553,7 @@ dash.calc('revisar', {
     const t = dash.data('carteira_total'), tr = t.status === 'ok' ? t.data[0] : null, ck = document.getElementById('iv-cart-kpis');
     if (tr) {
       kpi(ck, [
-        {l: 'Patrimônio mapeado', v: F.brl(tr.total), src: 'carteira_total', field: 'total', d: `${F.brl(tr.rv)} em renda variável`},
+        {l: 'Patrimônio mapeado', v: F.brl(tr.total), src: 'carteira_total', field: 'total', d: `${F.brl(tr.rv)} investidos, o resto em conta`},
         {l: 'Parado em conta corrente', v: pc1(tr.parte_caixa), src: 'carteira_total', field: 'parte_caixa', d: `${F.brl(tr.caixa)} quase sem render`, st: tr.parte_caixa > 50 ? ['critical', '✕ Rendendo abaixo do CDI'] : null},
         {l: 'Renda passiva no último mês', v: F.brl2(tr.renda_mes), src: 'carteira_total', field: 'renda_mes', d: tr.mes_renda ? `${F.mesLongo(tr.mes_renda)} · ${F.brl(tr.rend_12m)} em 12 meses` : ''},
         {l: 'Yield da renda variável', v: pc1(tr.yield_rv), src: 'carteira_total', field: 'yield_rv', d: 'último mês × 12 ÷ valor, isento'},
@@ -588,6 +627,34 @@ dash.calc('revisar', {
         return item;
       }));
     } else { failed(rvh, rv); }
+
+    // Crédito privado e recebimentos
+    const cpd = dash.data('credito_privado'), cph = document.getElementById('iv-cp');
+    if (cpd.status === 'ok') {
+      cph.replaceChildren(...cpd.data.map((c) => {
+        const box = el('div', {class: 'iv-cp-item'});
+        box.append(el('b', {}, c.ativo));
+        const g = el('div', {class: 'pf-nums', style: 'margin:var(--cds-gap-xs) 0'});
+        [['Taxa', pc2(c.taxa_aa) + (c.isento ? ' isento' : '')], ['Equivale a um CDB de', `${pc2(c.equiv_cdb)} (${c.pct_cdi}% do CDI)`], ['Valor hoje', F.brl2(c.valor)], ['Do patrimônio', pc1(c.parte)]].forEach(([l, v]) => {
+          const d = el('div', {}); d.append(el('div', {class: 'l'}, l), el('div', {class: 'v', style: 'font-size:var(--cds-font-size-heading)'}, v)); g.append(d);
+        });
+        box.append(g, el('p', {class: 'pf-note', style: 'margin:0'}, `Risco ${c.risco} · ${c.garantia} · ${c.liquidez} · vence em ${c.vencimento.split('-').reverse().join('/')} · plataforma ${c.plataforma}`));
+        return box;
+      }));
+      if (!cpd.data.length) cph.replaceChildren(el('p', {class: 'pf-note'}, 'Nenhum investimento de crédito privado registrado.'));
+    } else { failed(cph, cpd); }
+    const rr = dash.data('recebimentos_resumo'), rrr = rr.status === 'ok' ? rr.data[0] : null;
+    document.getElementById('iv-rec-nota').textContent = rrr
+      ? `A receber: ${F.brl2(rrr.a_receber)} até ${rrr.ultima_data.split('-').reverse().join('/')}, sendo ${F.brl2(rrr.juros_total)} de juros e ${F.brl2(rrr.devolucao_total)} de devolução do capital (inclui os juros acumulados antes da primeira parcela). Nos próximos 12 meses: ${F.brl2(rrr.prox_12m)}, dos quais ${F.brl2(rrr.prox_12m_devolucao)} são capital a reinvestir.`
+      : '';
+    const rc = dash.data('recebimentos'), rcb = document.querySelector('#iv-rec tbody');
+    rcb.replaceChildren(...(rc.status === 'ok' ? rc.data : []).filter((r) => !r.recebido).sort((a, b) => a.data.localeCompare(b.data)).slice(0, 12).map((r) => {
+      const row = el('tr', {});
+      row.dataset.key = `${encodeURIComponent(r.ativo)},${encodeURIComponent(r.data)}`;
+      row.append(el('td', {}, r.data.split('-').reverse().join('/')), el('td', {}, `${r.ativo} · ${r.parcela}/${r.de}`), el('td', {class: 'n'}, F.brl2(r.valor)),
+        el('td', {class: 'n'}, F.brl2(r.juros)), el('td', {class: 'n iv-muted'}, F.brl2(r.amortizacao)));
+      return row;
+    }));
 
     // Renda fixa
     sugestoes('iv-sug-rf', 'sugestoes_rf');

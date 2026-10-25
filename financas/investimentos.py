@@ -120,6 +120,8 @@ def montar(transacoes, saldo, hoje, pasta_dados):
                              "ultimo_rend": None, "mes_ultimo": None,
                              "custo": None, "proventos": None, "desde": None, "valor_cdi": None})
 
+    manuais, recebimentos = investimentos_manuais(pasta_dados, hoje)
+    carteira.extend(manuais)
     carteira_hist = b3_doc.get("mensal", [])
     if b3_doc.get("posicoes_mensais") and meses:
         import historico
@@ -135,8 +137,55 @@ def montar(transacoes, saldo, hoje, pasta_dados):
         ret = {r["mes"]: r for r in historico.retorno_mensal(pos, fluxos, prov, precos, janela)}
         carteira_hist = [{**x, "valor": ret.get(x["mes"], {}).get("valor"), "retorno_mes": ret.get(x["mes"], {}).get("retorno_mes")}
                          for x in carteira_hist if x["mes"] in ret]
-    return {"carteira_hist": carteira_hist, "cenario": cenario, "cenario_hist": cenario_hist, "focus": focus, "tesouro": tesouro,
+    return {"recebimentos": recebimentos, "carteira_hist": carteira_hist, "cenario": cenario, "cenario_hist": cenario_hist, "focus": focus, "tesouro": tesouro,
             "fundos": fundos, "etfs": etfs, "carteira": carteira}
+
+
+def investimentos_manuais(pasta_dados, hoje):
+    """Investimentos fora da B3 e do Open Finance (ex.: CRA na INCO), de financas/dados/investimentos_manuais.json.
+
+    Valor de hoje = parcelas que faltam descontadas à taxa do papel (é o que as plataformas mostram).
+    Cada parcela é dividida em juros e amortização pelo saldo devedor corrigido pela taxa.
+    """
+    arq = pathlib.Path(pasta_dados) / "investimentos_manuais.json"
+    if not arq.exists():
+        return [], []
+    carteira, recebimentos = [], []
+    cdi = None
+    for a in json.loads(arq.read_text()).get("ativos", []):
+        taxa = a["taxa_aa"] / 100
+        inicio = dt.date.fromisoformat(a["data"])
+        anos = lambda d0, d1: (d1 - d0).days / 365
+        parcelas = sorted(a["parcelas"], key=lambda p: p["data"])
+        saldo, anterior, recebido, rend_12m = a["aplicado"], inicio, 0.0, 0.0
+        for p in parcelas:
+            d = dt.date.fromisoformat(p["data"])
+            juros_periodo = saldo * ((1 + taxa) ** anos(anterior, d) - 1)
+            juros = min(p["valor"], juros_periodo)
+            saldo = saldo + juros_periodo - p["valor"]
+            anterior = d
+            pago = d <= hoje
+            if pago:
+                recebido += p["valor"]
+                if (hoje - d).days <= 365:
+                    rend_12m += juros
+            recebimentos.append({"ativo": a["ativo"], "data": p["data"], "parcela": p["n"], "de": len(parcelas), "valor": p["valor"],
+                                 "juros": round(juros, 2), "amortizacao": round(p["valor"] - juros, 2), "recebido": pago})
+        valor = sum(p["valor"] / (1 + taxa) ** anos(hoje, dt.date.fromisoformat(p["data"])) for p in parcelas
+                    if dt.date.fromisoformat(p["data"]) > hoje)
+        if cdi is None:
+            cdi = {d.strftime("%Y-%m"): v for d, v in mercado.sgs(4391, inicio=dt.date(inicio.year, inicio.month, 1))}
+        fator = 1.0
+        for mes, v in sorted(cdi.items()):
+            if inicio.strftime("%Y-%m") <= mes <= hoje.strftime("%Y-%m"):
+                fator *= 1 + v / 100
+        valor_cdi = a["aplicado"] + a["aplicado"] * (fator - 1) * 0.85
+        carteira.append({"ativo": a["ativo"], "classe": a["classe"], "cotas": None, "preco": None, "valor": round(valor, 2),
+                         "rend_12m": round(rend_12m, 2), "ultimo_rend": None, "mes_ultimo": None,
+                         "custo": a["aplicado"], "proventos": round(recebido, 2), "desde": a["data"], "valor_cdi": round(valor_cdi, 2),
+                         "taxa_aa": a["taxa_aa"], "isento": a.get("isento"), "vencimento": a["vencimento"], "risco": a.get("risco"),
+                         "plataforma": a.get("plataforma"), "liquidez": a.get("liquidez"), "garantia": a.get("garantia")})
+    return carteira, recebimentos
 
 
 def _rend_conta(nome, caixa_rend):

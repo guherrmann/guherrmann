@@ -23,7 +23,7 @@
 
     <section id="carteira" aria-label="Minha carteira">
       <h2 class="pf-h2">Minha carteira</h2>
-      <p class="pf-note">Posição do extrato da B3 (compras, proventos e eventos desde 2020), mais o dinheiro em conta</p>
+      <p class="pf-note">Posição do extrato da B3 (compras, proventos e eventos desde 2020), investimentos registrados à mão (CRA na INCO) e o dinheiro em conta</p>
       <div class="pf-kpis" id="iv-cart-kpis"></div>
     </section>
     <div class="pf-grid">
@@ -60,6 +60,24 @@
           </table>
         </div>
         <p class="pf-note" id="iv-aporte-nota" style="margin:var(--cds-gap-sm) 0 0"></p>
+      </div>
+    </div>
+
+    <div class="pf-grid">
+      <div class="pf-card" id="credito-privado">
+        <h2 class="pf-h2">Crédito privado</h2>
+        <p class="pf-note">Fora da bolsa, sem FGC e sem resgate antes do vencimento. Valor de hoje: parcelas restantes descontadas à taxa do papel.</p>
+        <div id="iv-cp" data-source="credito_privado"></div>
+      </div>
+      <div class="pf-card" id="recebimentos">
+        <h2 class="pf-h2">Próximos recebimentos</h2>
+        <p class="pf-note" id="iv-rec-nota" data-source="recebimentos_resumo"></p>
+        <div class="pf-scroll" style="max-height:22rem;overflow:auto">
+          <table class="pf-tbl" id="iv-rec" data-source="recebimentos" data-row-key="ativo,data">
+            <thead><tr><th data-field="data">Data</th><th data-field="ativo">Investimento</th><th class="n" data-field="valor">Parcela</th><th class="n" data-field="juros">Juros</th><th class="n" data-field="amortizacao">Capital</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
