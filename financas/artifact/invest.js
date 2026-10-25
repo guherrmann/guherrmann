@@ -107,11 +107,15 @@ dash.calc('fundos_ind', {
 dash.calc('carteira_ativos', {
   inputs: ['carteira', 'fundos_ind'],
   title: 'Ativos da carteira',
-  description: 'Cada fundo e ação da carteira com valor, DY e P/VP.',
+  description: 'Cada ativo com valor, DY, P/VP e, desde a primeira compra: proventos, resultado (valor + proventos − custo) e diferença para o mesmo dinheiro no CDI líquido.',
   fn: (carteira, fundos_ind) => carteira.filter((c) => c.classe !== 'Caixa').map((c) => {
     const f = fundos_ind.find((x) => x.ticker === c.ativo) || {};
-    return {ativo: c.ativo, classe: c.classe, segmento: f.segmento || c.classe, cotas: c.cotas, preco: c.preco, valor: c.valor,
-      rend_12m: Number(c.rend_12m) || 0, ultimo_rend: c.ultimo_rend, dy: f.dy ?? null, p_vp: f.p_vp ?? null};
+    const custo = c.custo == null ? null : Number(c.custo), prov = c.proventos == null ? null : Number(c.proventos), valor = c.valor == null ? null : Number(c.valor);
+    const resultado = custo != null && valor != null ? valor + (prov || 0) - custo : null;
+    return {ativo: c.ativo, classe: c.classe, segmento: f.segmento || c.classe, cotas: c.cotas, preco: c.preco, valor,
+      rend_12m: Number(c.rend_12m) || 0, ultimo_rend: c.ultimo_rend, dy: f.dy ?? null, p_vp: f.p_vp ?? null,
+      custo, proventos: prov, desde: c.desde, resultado, resultado_pct: resultado != null && custo ? Math.round(resultado / custo * 1000) / 10 : null,
+      vs_cdi: c.valor_cdi != null && valor != null ? Math.round((valor + (prov || 0) - Number(c.valor_cdi)) * 100) / 100 : null};
   }).sort((a, b) => (b.valor || 0) - (a.valor || 0)),
 });
 
@@ -128,10 +132,13 @@ dash.calc('carteira_classes', {
 });
 
 dash.calc('carteira_total', {
-  inputs: ['carteira'],
+  inputs: ['carteira', 'carteira_ativos'],
   title: 'Totais da carteira',
-  description: 'Patrimônio total, parte em renda variável, renda recebida em 12 meses e no último mês.',
-  fn: (carteira) => {
+  description: 'Patrimônio total, parte em renda variável, renda recebida em 12 meses e no último mês, e resultado desde a compra contra o CDI.',
+  fn: (carteira, carteira_ativos) => {
+    const comCusto = carteira_ativos.filter((a) => a.resultado != null);
+    const resultado = comCusto.reduce((s, a) => s + a.resultado, 0), custo = comCusto.reduce((s, a) => s + a.custo, 0);
+    const vsCdi = carteira_ativos.filter((a) => a.vs_cdi != null).reduce((s, a) => s + a.vs_cdi, 0);
     const soma = (f) => carteira.filter(f).reduce((s, c) => s + (Number(c.valor) || 0), 0);
     const total = soma(() => true), rv = soma((c) => c.classe !== 'Caixa');
     const rend = carteira.reduce((s, c) => s + (Number(c.rend_12m) || 0), 0);
@@ -139,7 +146,8 @@ dash.calc('carteira_total', {
     const ult = meses[meses.length - 1];
     const mes = carteira.filter((c) => c.mes_ultimo === ult).reduce((s, c) => s + (Number(c.ultimo_rend) || 0), 0);
     return [{total, rv, caixa: total - rv, rend_12m: rend, renda_mes: mes, mes_renda: ult || null, yield_rv: rv ? Math.round(mes * 12 / rv * 1000) / 10 : null,
-      parte_caixa: total ? Math.round((total - rv) / total * 1000) / 10 : null}];
+      parte_caixa: total ? Math.round((total - rv) / total * 1000) / 10 : null,
+      resultado, resultado_pct: custo ? Math.round(resultado / custo * 1000) / 10 : null, vs_cdi: vsCdi}];
   },
 });
 
@@ -213,6 +221,12 @@ dash.calc('sugestoes_rv', {
       if (meu.p_vp != null && meu.p_vp > 1.02) out.push({ordem: 3, nivel: 'info', titulo: `${a.ativo} negocia acima do patrimônio`,
         texto: `P/VP de ${n2(meu.p_vp)}: cada R$ 1 de patrimônio custa R$ ${n2(meu.p_vp)} na bolsa. Não é motivo para vender, mas pode não ser o melhor momento para aumentar a posição.`});
     });
+    const perdeu = carteira_ativos.filter((a) => a.vs_cdi != null && a.vs_cdi < 0 && a.desde && a.desde < '2024-01-01');
+    if (perdeu.length) {
+      const tot = perdeu.reduce((s, a) => s + a.vs_cdi, 0);
+      out.push({ordem: 3, nivel: 'media', titulo: 'Desde 2020, parte da carteira rendeu menos que o CDI',
+        texto: `${perdeu.map((a) => a.ativo).join(', ')}: somando cotação e proventos desde a compra, ficaram ${brl(-tot)} abaixo do que o mesmo dinheiro teria rendido no CDI, já descontado o IR. Fundos de tijolo sofrem com juros altos e podem se recuperar quando a Selic cair, mas vale rever se ainda cumprem o papel que você espera deles.`});
+    }
     const peq = carteira_ativos.filter((a) => a.valor != null && a.valor < 250);
     if (peq.length) out.push({ordem: 4, nivel: 'info', titulo: 'Posições pequenas',
       texto: `${peq.map((a) => a.ativo + ' (' + brl(a.valor) + ')').join(', ')}. Com tão pouco, o efeito na carteira é mínimo. Vale concentrar os próximos aportes em menos fundos.`});
@@ -400,6 +414,8 @@ dash.calc('sugestoes_rv', {
         {l: 'Parado em conta corrente', v: pc1(tr.parte_caixa), src: 'carteira_total', field: 'parte_caixa', d: `${F.brl(tr.caixa)} quase sem render`, st: tr.parte_caixa > 50 ? ['critical', '✕ Rendendo abaixo do CDI'] : null},
         {l: 'Renda passiva no último mês', v: F.brl2(tr.renda_mes), src: 'carteira_total', field: 'renda_mes', d: tr.mes_renda ? `${F.mesLongo(tr.mes_renda)} · ${F.brl(tr.rend_12m)} em 12 meses` : ''},
         {l: 'Yield da renda variável', v: pc1(tr.yield_rv), src: 'carteira_total', field: 'yield_rv', d: 'último mês × 12 ÷ valor, isento'},
+        {l: 'Resultado desde a compra', v: (tr.resultado >= 0 ? '+' : '') + F.brl(tr.resultado), src: 'carteira_total', field: 'resultado', d: `${pc1(tr.resultado_pct)} sobre o custo, com proventos`},
+        {l: 'Contra o CDI líquido', v: (tr.vs_cdi >= 0 ? '+' : '') + F.brl(tr.vs_cdi), src: 'carteira_total', field: 'vs_cdi', d: 'se as mesmas compras tivessem ido para o CDI', st: tr.vs_cdi < 0 ? ['warning', '! Abaixo do CDI'] : ['good', '✓ Acima do CDI']},
       ]);
     } else { failed(ck, t); }
     const cl = dash.data('carteira_classes'), clh = document.getElementById('iv-classes');
@@ -418,8 +434,12 @@ dash.calc('sugestoes_rv', {
     const ca = dash.data('carteira_ativos'), cab = document.querySelector('#iv-ativos tbody');
     cab.replaceChildren(...(ca.status === 'ok' ? ca.data : []).map((a) => {
       const row = el('tr', {});
-      row.append(el('td', {}, a.ativo), el('td', {class: 'n'}, a.cotas == null ? '—' : String(a.cotas)), el('td', {class: 'n'}, a.valor == null ? '—' : F.brl(a.valor)),
-        el('td', {class: 'n'}, pc1(a.dy)), el('td', {class: 'n'}, num2(a.p_vp)), el('td', {class: 'n'}, F.brl2(a.rend_12m)));
+      const sinal = (v) => v == null ? '—' : (v > 0 ? '+' : '') + F.brl(v);
+      row.append(el('td', {}, a.ativo), el('td', {class: 'n'}, a.cotas == null ? '—' : Number(a.cotas).toLocaleString('pt-BR')), el('td', {class: 'n'}, a.valor == null ? '—' : F.brl(a.valor)),
+        el('td', {class: 'n'}, pc1(a.dy)), el('td', {class: 'n'}, num2(a.p_vp)), el('td', {class: 'n'}, a.proventos == null ? '—' : F.brl(a.proventos)),
+        el('td', {class: 'n ' + (a.resultado == null ? '' : a.resultado >= 0 ? 'iv-pos' : 'iv-neg')}, a.resultado == null ? '—' : sinal(a.resultado) + ` (${pc1(a.resultado_pct)})`),
+        el('td', {class: 'n ' + (a.vs_cdi == null ? '' : a.vs_cdi >= 0 ? 'iv-pos' : 'iv-neg')}, sinal(a.vs_cdi)),
+        el('td', {class: 'n iv-muted'}, a.desde ? F.mes(a.desde.slice(0, 7)) : '—'));
       return row;
     }));
 

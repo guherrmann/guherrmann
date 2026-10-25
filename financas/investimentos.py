@@ -4,6 +4,8 @@ A carteira de renda variável é deduzida dos rendimentos que caem na corretora
 ("RENDIMENTOS DE CLIENTES MXRF11 S/ 45" = 45 cotas de MXRF11). Quantidades de
 ativos que não aparecem assim podem ser informadas em financas/dados/carteira_manual.json:
     {"ITSA4": 100, "AXIA3": 10}
+Se existir financas/dados/b3_posicao.json (gerado por b3.py), a posição da B3 prevalece
+e traz custo, proventos desde a compra, comparação com o CDI e títulos do Tesouro.
 """
 import collections
 import datetime as dt
@@ -89,18 +91,33 @@ def montar(transacoes, saldo, hoje, pasta_dados):
     etfs = [{"ticker": t, "descricao": d, "preco": cot.get(t, {}).get("preco"), "min52": cot.get(t, {}).get("min52"),
              "max52": cot.get(t, {}).get("max52"), "volume": cot.get(t, {}).get("volume")} for t, d in mercado.ETFS.items()]
 
+    b3_p = pathlib.Path(pasta_dados) / "b3_posicao.json"
+    b3 = json.loads(b3_p.read_text())["ativos"] if b3_p.exists() else {}
+    for t, p in b3.items():  # a posição da B3 prevalece sobre a deduzida dos rendimentos
+        if not t.startswith("Tesouro"):
+            ativos.setdefault(t, {"cotas": None, "rend_12m": 0.0, "ultimo_rend": 0.0, "mes_ultimo": None})["cotas"] = p["cotas"]
+
     carteira = []
+    for t, p in sorted(b3.items()):
+        if t.startswith("Tesouro"):
+            titulo = next((x for x in tesouro if x["titulo"] == t), None)
+            carteira.append({"ativo": t, "classe": "Tesouro", "cotas": p["cotas"], "preco": titulo and titulo["preco_compra"],
+                             "valor": round(p["cotas"] * titulo["preco_compra"], 2) if titulo else None,
+                             "rend_12m": 0.0, "ultimo_rend": None, "mes_ultimo": None,
+                             "custo": None, "proventos": None, "desde": None, "valor_cdi": None})
     for t, a in sorted(ativos.items()):
         info = cvm.get(t[:4])
         preco = cot.get(t, {}).get("preco")
         carteira.append({"ativo": t, "classe": classe_de(t, info and mercado.resumo_fundo(info)), "cotas": a["cotas"], "preco": preco,
                          "valor": round(a["cotas"] * preco, 2) if a["cotas"] and preco else None,
-                         "rend_12m": round(a["rend_12m"], 2), "ultimo_rend": a["ultimo_rend"], "mes_ultimo": a["mes_ultimo"]})
+                         "rend_12m": round(a["rend_12m"], 2), "ultimo_rend": a["ultimo_rend"], "mes_ultimo": a["mes_ultimo"],
+                         **{k: (b3.get(t) or {}).get(k) for k in ("custo", "proventos", "desde", "valor_cdi")}})
     for c in saldo.get("accounts", []):
         if c.get("balance"):
             carteira.append({"ativo": f"Conta {c['name']}", "classe": "Caixa", "cotas": None, "preco": None,
                              "valor": c["balance"], "rend_12m": round(_rend_conta(c["name"], caixa_rend), 2),
-                             "ultimo_rend": None, "mes_ultimo": None})
+                             "ultimo_rend": None, "mes_ultimo": None,
+                             "custo": None, "proventos": None, "desde": None, "valor_cdi": None})
 
     return {"cenario": cenario, "cenario_hist": cenario_hist, "focus": focus, "tesouro": tesouro,
             "fundos": fundos, "etfs": etfs, "carteira": carteira}

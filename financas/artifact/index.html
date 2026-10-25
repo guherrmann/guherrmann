@@ -209,7 +209,7 @@
 
     <section id="carteira" aria-label="Minha carteira">
       <h2 class="pf-h2">Minha carteira</h2>
-      <p class="pf-note">Fundos e ações deduzidos dos rendimentos que caem na Rico, mais o dinheiro em conta</p>
+      <p class="pf-note">Posição do extrato da B3 (compras, proventos e eventos desde 2020), mais o dinheiro em conta</p>
       <div class="pf-kpis" id="iv-cart-kpis"></div>
     </section>
     <div class="pf-grid">
@@ -218,12 +218,12 @@
         <p class="pf-note">Valor de mercado e renda recebida em 12 meses</p>
         <div id="iv-classes" data-source="carteira_classes"></div>
       </div>
-      <div class="pf-card" id="carteira-ativos">
+      <div class="pf-card pf-wide" id="carteira-ativos">
         <h2 class="pf-h2">Ativos</h2>
-        <p class="pf-note">Cotação brapi e valor patrimonial da CVM</p>
+        <p class="pf-note">Resultado = valor atual + proventos − custo das compras. × CDI = diferença para o mesmo dinheiro no CDI, líquido de 15% de IR.</p>
         <div class="pf-scroll">
           <table class="pf-tbl" id="iv-ativos" data-source="carteira_ativos" data-row-key="ativo">
-            <thead><tr><th data-field="ativo">Ativo</th><th class="n" data-field="cotas">Cotas</th><th class="n" data-field="valor">Valor</th><th class="n" data-field="dy">DY 12m</th><th class="n" data-field="p_vp">P/VP</th><th class="n" data-field="rend_12m">Recebido 12m</th></tr></thead>
+            <thead><tr><th data-field="ativo">Ativo</th><th class="n" data-field="cotas">Cotas</th><th class="n" data-field="valor">Valor</th><th class="n" data-field="dy">DY 12m</th><th class="n" data-field="p_vp">P/VP</th><th class="n" data-field="proventos">Proventos</th><th class="n" data-field="resultado">Resultado</th><th class="n" data-field="vs_cdi">× CDI</th><th class="n" data-field="desde">Desde</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -323,7 +323,7 @@
           <li><b>Rentabilidade líquida</b>: IR de 22,5% (até 6 meses), 20% (até 1 ano), 17,5% (até 2 anos) e 15% (acima). LCI, LCA, CRI, CRA, poupança e rendimentos de FIIs são isentos para pessoa física. No Tesouro, desconto de 0,20% a.a. de custódia da B3, exceto no Tesouro Selic até R$ 10 mil.</li>
           <li><b>IPCA+</b>: rendimento nominal estimado com a inflação esperada pelo Focus. <b>Poupança</b>: 0,5% ao mês + TR enquanto a Selic estiver acima de 8,5%.</li>
           <li>FIIs: rendimento por cota calculado a partir do DY mensal informado pelos administradores à CVM. Quando o administrador não informa, aparece “—”.</li>
-          <li>Carteira deduzida dos lançamentos “RENDIMENTOS DE CLIENTES ... S/ quantidade” da Rico. Ativos sem rendimento no período, CDBs, Tesouro e fundos não aparecem. Mande a posição da B3 para completar.</li>
+          <li>Carteira montada com o extrato de movimentação da B3: a quantidade vem do último provento de cada ativo, ajustada por compras e vendas posteriores. O Tesouro IPCA+ 2035 aparece com a quantidade transferida em 2021 (compras anteriores ao extrato não aparecem; confira no Tesouro Direto), avaliado pelo preço de compra do dia. CDBs e fundos fora da B3 não aparecem.</li>
         </ul>
       </div>
     </div>
