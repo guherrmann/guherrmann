@@ -1,4 +1,28 @@
 <style>
+.pf-tabs{display:flex;gap:var(--cds-gap-xs);border-bottom:1px solid var(--color-border-line)}
+.pf-tabs button{font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-sm);background:none;border:0;border-bottom:2px solid transparent;color:var(--color-fg-muted);cursor:pointer;margin-bottom:-1px}
+.pf-tabs button[aria-selected="true"]{color:var(--color-fg);border-bottom-color:var(--color-fg);font-weight:var(--cds-font-weight-medium)}
+.pf-tabs button:focus-visible,.iv-sort th button:focus-visible,.iv-select:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
+.pf-tab{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
+.pf-tab[hidden]{display:none}
+.iv-sug{display:flex;flex-direction:column;gap:var(--cds-gap-sm)}
+.iv-item{display:flex;gap:var(--cds-gap-sm);align-items:flex-start;padding:var(--cds-pad-sm) 0;border-top:1px solid var(--cds-chart-grid)}
+.iv-item:first-child{border-top:0;padding-top:0}
+.iv-item p{margin:2px 0 0;color:var(--color-fg-muted);font-size:var(--cds-font-size-body);max-width:62rem}
+.iv-ic{flex:0 0 1.5rem;height:1.5rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:var(--cds-font-size-caption);font-weight:var(--cds-font-weight-medium);border:1px solid currentColor}
+.iv-alta{color:var(--color-bad)} .iv-media{color:var(--color-warn)} .iv-ok{color:var(--color-ok)} .iv-info{color:var(--color-fg-muted)}
+.iv-mine td{font-weight:var(--cds-font-weight-medium)}
+.iv-mine td:first-child::after{content:" · seu";color:var(--color-fg-muted);font-weight:400;font-size:var(--cds-font-size-caption)}
+.iv-pos{color:var(--color-ok)} .iv-neg{color:var(--color-bad)} .iv-muted{color:var(--color-fg-muted)}
+.iv-best{font-weight:var(--cds-font-weight-medium);color:var(--color-ok)}
+.iv-range{position:relative;height:6px;border-radius:3px;background:var(--cds-chart-grid);margin-top:6px}
+.iv-range span{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;margin-left:-6px;border:2px solid var(--color-panel)}
+.iv-select{font:inherit;font-size:var(--cds-font-size-caption);padding:4px 6px;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg)}
+.iv-calc-out{margin:var(--cds-gap-md) 0 0;font-size:var(--cds-font-size-body);color:var(--color-fg-muted)}
+.iv-calc-out b{color:var(--color-fg)}
+.iv-sort th button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+.iv-sort th[aria-sort="descending"] button::after{content:" ↓"} .iv-sort th[aria-sort="ascending"] button::after{content:" ↑"}
+.pf-scroll th{position:sticky;top:0;background:var(--color-panel)}
 .pf{display:flex;flex-direction:column;gap:var(--cds-gap-lg);font-family:var(--font-anthropic-sans);color:var(--color-fg)}
 .pf-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--cds-gap-md)}
 .pf-title{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0;line-height:1.2}
@@ -58,100 +82,250 @@
 </style>
 
 <div class="pf">
-  <div class="pf-head">
-    <div>
-      <h1 class="pf-title">Painel financeiro</h1>
-      <p class="pf-take" id="pf-take"><span class="dash-skeleton">—</span></p>
-    </div>
-    <div class="pf-ctrl">
-      <div class="pf-seg" role="group" aria-label="Período" id="pf-periodo">
-        <button type="button" data-n="3">3 meses</button><button type="button" data-n="6">6 meses</button><button type="button" data-n="12">12 meses</button>
+  <nav class="pf-tabs" role="tablist" aria-label="Seções">
+    <button type="button" role="tab" id="tab-orcamento" aria-controls="orcamento" data-tab="orcamento">Orçamento</button>
+    <button type="button" role="tab" id="tab-investimentos" aria-controls="investimentos" data-tab="investimentos">Investimentos</button>
+  </nav>
+  <div id="orcamento" class="pf-tab" role="tabpanel" aria-labelledby="tab-orcamento">
+    <div class="pf-head">
+      <div>
+        <h1 class="pf-title">Painel financeiro</h1>
+        <p class="pf-take" id="pf-take"><span class="dash-skeleton">—</span></p>
       </div>
-      <button type="button" class="pf-btn" id="pf-metas-btn" aria-expanded="false" aria-controls="pf-metas-card">Ajustar metas</button>
+      <div class="pf-ctrl">
+        <div class="pf-seg" role="group" aria-label="Período" id="pf-periodo">
+          <button type="button" data-n="3">3 meses</button><button type="button" data-n="6">6 meses</button><button type="button" data-n="12">12 meses</button>
+        </div>
+        <button type="button" class="pf-btn" id="pf-metas-btn" aria-expanded="false" aria-controls="pf-metas-card">Ajustar metas</button>
+      </div>
+    </div>
+
+    <div class="pf-card" id="pf-metas-card" hidden>
+      <h2 class="pf-h2">Suas metas</h2>
+      <p class="pf-note">Os indicadores mudam de cor conforme estas metas. Para guardar novas metas como padrão, peça ao Claude no chat.</p>
+      <div class="pf-metas" id="pf-metas"></div>
+      <div style="margin-top:var(--cds-gap-md)"><button type="button" class="pf-btn" id="pf-reset">Voltar às metas padrão</button></div>
+    </div>
+
+    <section id="indicadores" class="pf-kpis" aria-label="Indicadores"></section>
+
+    <div class="pf-grid">
+      <div class="pf-card" id="ritmo">
+        <h2 class="pf-h2" id="pf-ritmo-t">Ritmo do mês</h2>
+        <p class="pf-note">Gasto até hoje comparado à média mensal dos últimos 12 meses</p>
+        <div class="pf-nums">
+          <div><div class="l">Gasto até agora</div><div class="v" data-source="ritmo_total" data-field="gasto" data-row="0" id="pf-r-gasto">—</div></div>
+          <div><div class="l">Projeção do mês</div><div class="v" data-source="ritmo_total" data-field="projecao" data-row="0" id="pf-r-proj">—</div></div>
+          <div><div class="l">Média mensal</div><div class="v" data-source="ritmo_total" data-field="media" data-row="0" id="pf-r-media">—</div></div>
+          <div><div class="l">Entradas no mês</div><div class="v" data-source="ritmo_total" data-field="receita" data-row="0" id="pf-r-rec">—</div></div>
+        </div>
+        <div class="pf-meter" id="pf-r-meter" data-source="ritmo_total"></div>
+        <div class="pf-note" id="pf-r-leg" style="margin-bottom:var(--cds-gap-sm)"></div>
+        <div class="pf-scroll">
+          <table class="pf-tbl" id="pf-ritmo-tbl" data-source="ritmo" data-row-key="grupo">
+            <thead><tr><th data-field="grupo">Grupo</th><th class="n" data-field="atual">Este mês</th><th class="n" data-field="media">Média</th><th class="n" data-field="uso">Uso da média</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pf-card" id="cartoes">
+        <h2 class="pf-h2">Cartões e contas</h2>
+        <p class="pf-note">Uso do limite e saldos atuais</p>
+        <div id="pf-cards" data-source="cartoes"></div>
+        <div class="pf-scroll" style="margin-top:var(--cds-gap-md)">
+          <table class="pf-tbl" id="pf-contas" data-source="contas" data-row-key="conta">
+            <thead><tr><th data-field="conta">Conta</th><th class="n" data-field="saldo">Saldo</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+        <h2 class="pf-h2" style="margin-top:var(--cds-gap-lg)">Parcelas a vencer</h2>
+        <div class="pf-scroll">
+          <table class="pf-tbl" id="pf-parcelas" data-source="parcelas" data-row-key="mes">
+            <thead><tr><th data-field="mes">Mês</th><th class="n" data-field="valor">Valor</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pf-card pf-wide" id="poupanca">
+        <h2 class="pf-h2">Taxa de poupança por mês</h2>
+        <p class="pf-note" id="pf-poup-note">Quanto da renda sobrou em cada mês</p>
+        <div class="pf-legend"><span><i style="background:var(--pf-c0)"></i>Sobrou</span><span><i style="background:var(--pf-c1)"></i>Faltou</span><span><span class="dash"></span>Meta</span></div>
+        <div class="pf-chart" id="pf-ch-poup" data-source="poupanca_mensal"></div>
+      </div>
+
+      <div class="pf-card pf-wide" id="composicao">
+        <h2 class="pf-h2">Para onde vai o dinheiro</h2>
+        <p class="pf-note">Saídas por grupo, mês a mês. A linha é a renda do mês.</p>
+        <div class="pf-legend" id="pf-leg-grupos" data-source="grupos"></div>
+        <div class="pf-chart" id="pf-ch-grupos" data-source="grupos mensal" style="min-height:300px"></div>
+      </div>
+
+      <div class="pf-card" id="recorrentes">
+        <h2 class="pf-h2">Gastos recorrentes</h2>
+        <p class="pf-note">Estabelecimentos presentes em 6 meses ou mais (últimos 12 meses)</p>
+        <div class="pf-scroll">
+          <table class="pf-tbl" id="pf-rec" data-source="recorrentes" data-row-key="estabelecimento">
+            <thead><tr><th data-field="estabelecimento">Estabelecimento</th><th class="n" data-field="meses">Meses</th><th class="n" data-field="media">Média/mês</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pf-card" id="metodo">
+        <h2 class="pf-h2">Como os números são calculados</h2>
+        <ul style="margin-top:var(--cds-gap-sm)">
+          <li><b>Entradas</b>: créditos em conta (salário, PIX recebidos, rendimentos).</li>
+          <li><b>Saídas</b>: compras no cartão, no mês de vencimento de cada parcela e com estornos descontados, mais débitos em conta.</li>
+          <li>Ficam de fora pagamentos de fatura, transferências entre contas suas e aplicações.</li>
+          <li><b>Reserva</b>: saldo em conta dividido pela saída média mensal do período.</li>
+          <li><b>Gastos fixos</b>: moradia, luz, internet, celular, seguros e assinaturas.</li>
+          <li>Os períodos usam meses completos. O mês atual aparece só no quadro de ritmo.</li>
+          <li>Dados do Pierre (Open Finance), atualizados todo domingo.</li>
+        </ul>
+      </div>
     </div>
   </div>
-
-  <div class="pf-card" id="pf-metas-card" hidden>
-    <h2 class="pf-h2">Suas metas</h2>
-    <p class="pf-note">Os indicadores mudam de cor conforme estas metas. Para guardar novas metas como padrão, peça ao Claude no chat.</p>
-    <div class="pf-metas" id="pf-metas"></div>
-    <div style="margin-top:var(--cds-gap-md)"><button type="button" class="pf-btn" id="pf-reset">Voltar às metas padrão</button></div>
-  </div>
-
-  <section id="indicadores" class="pf-kpis" aria-label="Indicadores"></section>
-
-  <div class="pf-grid">
-    <div class="pf-card" id="ritmo">
-      <h2 class="pf-h2" id="pf-ritmo-t">Ritmo do mês</h2>
-      <p class="pf-note">Gasto até hoje comparado à média mensal dos últimos 12 meses</p>
-      <div class="pf-nums">
-        <div><div class="l">Gasto até agora</div><div class="v" data-source="ritmo_total" data-field="gasto" data-row="0" id="pf-r-gasto">—</div></div>
-        <div><div class="l">Projeção do mês</div><div class="v" data-source="ritmo_total" data-field="projecao" data-row="0" id="pf-r-proj">—</div></div>
-        <div><div class="l">Média mensal</div><div class="v" data-source="ritmo_total" data-field="media" data-row="0" id="pf-r-media">—</div></div>
-        <div><div class="l">Entradas no mês</div><div class="v" data-source="ritmo_total" data-field="receita" data-row="0" id="pf-r-rec">—</div></div>
-      </div>
-      <div class="pf-meter" id="pf-r-meter" data-source="ritmo_total"></div>
-      <div class="pf-note" id="pf-r-leg" style="margin-bottom:var(--cds-gap-sm)"></div>
-      <div class="pf-scroll">
-        <table class="pf-tbl" id="pf-ritmo-tbl" data-source="ritmo" data-row-key="grupo">
-          <thead><tr><th data-field="grupo">Grupo</th><th class="n" data-field="atual">Este mês</th><th class="n" data-field="media">Média</th><th class="n" data-field="uso">Uso da média</th></tr></thead>
-          <tbody></tbody>
-        </table>
+  <div id="investimentos" class="pf-tab" role="tabpanel" aria-labelledby="tab-investimentos" hidden>
+    <div class="pf-head">
+      <div>
+        <h1 class="pf-title">Investimentos</h1>
+        <p class="pf-take" id="iv-take"><span class="dash-skeleton">—</span></p>
       </div>
     </div>
 
-    <div class="pf-card" id="cartoes">
-      <h2 class="pf-h2">Cartões e contas</h2>
-      <p class="pf-note">Uso do limite e saldos atuais</p>
-      <div id="pf-cards" data-source="cartoes"></div>
-      <div class="pf-scroll" style="margin-top:var(--cds-gap-md)">
-        <table class="pf-tbl" id="pf-contas" data-source="contas" data-row-key="conta">
-          <thead><tr><th data-field="conta">Conta</th><th class="n" data-field="saldo">Saldo</th></tr></thead><tbody></tbody>
-        </table>
-      </div>
-      <h2 class="pf-h2" style="margin-top:var(--cds-gap-lg)">Parcelas a vencer</h2>
-      <div class="pf-scroll">
-        <table class="pf-tbl" id="pf-parcelas" data-source="parcelas" data-row-key="mes">
-          <thead><tr><th data-field="mes">Mês</th><th class="n" data-field="valor">Valor</th></tr></thead><tbody></tbody>
-        </table>
+    <section id="cenario" aria-label="Cenário">
+      <h2 class="pf-h2">Cenário de juros e inflação</h2>
+      <p class="pf-note" id="iv-cen-note">Banco Central (SGS) e Boletim Focus</p>
+      <div class="pf-kpis" id="iv-cen"></div>
+    </section>
+
+    <div class="pf-grid">
+      <div class="pf-card pf-wide" id="juros-hist">
+        <h2 class="pf-h2">CDI e inflação nos últimos 24 meses</h2>
+        <p class="pf-note">Taxa anual. A distância entre as linhas é o juro real.</p>
+        <div class="pf-legend"><span><i style="background:var(--pf-c0)"></i>CDI</span><span><i style="background:var(--pf-c1)"></i>IPCA 12 meses</span></div>
+        <div class="pf-chart" id="iv-ch-juros" data-source="cenario_hist" style="min-height:230px"></div>
       </div>
     </div>
 
-    <div class="pf-card pf-wide" id="poupanca">
-      <h2 class="pf-h2">Taxa de poupança por mês</h2>
-      <p class="pf-note" id="pf-poup-note">Quanto da renda sobrou em cada mês</p>
-      <div class="pf-legend"><span><i style="background:var(--pf-c0)"></i>Sobrou</span><span><i style="background:var(--pf-c1)"></i>Faltou</span><span><span class="dash"></span>Meta</span></div>
-      <div class="pf-chart" id="pf-ch-poup" data-source="poupanca_mensal"></div>
-    </div>
-
-    <div class="pf-card pf-wide" id="composicao">
-      <h2 class="pf-h2">Para onde vai o dinheiro</h2>
-      <p class="pf-note">Saídas por grupo, mês a mês. A linha é a renda do mês.</p>
-      <div class="pf-legend" id="pf-leg-grupos" data-source="grupos"></div>
-      <div class="pf-chart" id="pf-ch-grupos" data-source="grupos mensal" style="min-height:300px"></div>
-    </div>
-
-    <div class="pf-card" id="recorrentes">
-      <h2 class="pf-h2">Gastos recorrentes</h2>
-      <p class="pf-note">Estabelecimentos presentes em 6 meses ou mais (últimos 12 meses)</p>
-      <div class="pf-scroll">
-        <table class="pf-tbl" id="pf-rec" data-source="recorrentes" data-row-key="estabelecimento">
-          <thead><tr><th data-field="estabelecimento">Estabelecimento</th><th class="n" data-field="meses">Meses</th><th class="n" data-field="media">Média/mês</th></tr></thead><tbody></tbody>
-        </table>
+    <section id="carteira" aria-label="Minha carteira">
+      <h2 class="pf-h2">Minha carteira</h2>
+      <p class="pf-note">Fundos e ações deduzidos dos rendimentos que caem na Rico, mais o dinheiro em conta</p>
+      <div class="pf-kpis" id="iv-cart-kpis"></div>
+    </section>
+    <div class="pf-grid">
+      <div class="pf-card" id="carteira-classes">
+        <h2 class="pf-h2">Por classe</h2>
+        <p class="pf-note">Valor de mercado e renda recebida em 12 meses</p>
+        <div id="iv-classes" data-source="carteira_classes"></div>
+      </div>
+      <div class="pf-card" id="carteira-ativos">
+        <h2 class="pf-h2">Ativos</h2>
+        <p class="pf-note">Cotação brapi e valor patrimonial da CVM</p>
+        <div class="pf-scroll">
+          <table class="pf-tbl" id="iv-ativos" data-source="carteira_ativos" data-row-key="ativo">
+            <thead><tr><th data-field="ativo">Ativo</th><th class="n" data-field="cotas">Cotas</th><th class="n" data-field="valor">Valor</th><th class="n" data-field="dy">DY 12m</th><th class="n" data-field="p_vp">P/VP</th><th class="n" data-field="rend_12m">Recebido 12m</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div class="pf-card" id="metodo">
-      <h2 class="pf-h2">Como os números são calculados</h2>
-      <ul style="margin-top:var(--cds-gap-sm)">
-        <li><b>Entradas</b>: créditos em conta (salário, PIX recebidos, rendimentos).</li>
-        <li><b>Saídas</b>: compras no cartão, no mês de vencimento de cada parcela e com estornos descontados, mais débitos em conta.</li>
-        <li>Ficam de fora pagamentos de fatura, transferências entre contas suas e aplicações.</li>
-        <li><b>Reserva</b>: saldo em conta dividido pela saída média mensal do período.</li>
-        <li><b>Gastos fixos</b>: moradia, luz, internet, celular, seguros e assinaturas.</li>
-        <li>Os períodos usam meses completos. O mês atual aparece só no quadro de ritmo.</li>
-        <li>Dados do Pierre (Open Finance), atualizados todo domingo.</li>
-      </ul>
+    <section id="renda-fixa" aria-label="Renda fixa">
+      <h2 class="pf-title" style="font-size:var(--cds-font-size-heading)">Renda fixa</h2>
+    </section>
+    <div class="pf-grid">
+      <div class="pf-card pf-wide" id="sugestoes-rf">
+        <h2 class="pf-h2">Sugestões de renda fixa</h2>
+        <p class="pf-note">Calculadas com os seus saldos e as taxas do dia. A decisão é sua.</p>
+        <div id="iv-sug-rf" data-source="sugestoes_rf" class="iv-sug"></div>
+      </div>
+      <div class="pf-card pf-wide" id="comparativo-rf">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--cds-gap-sm);align-items:flex-start">
+          <div>
+            <h2 class="pf-h2">Quanto rende cada opção, já descontado o IR</h2>
+            <p class="pf-note">Taxa ao ano. CDB e LCI/LCA usam percentuais de referência do CDI: confira a oferta real na corretora.</p>
+          </div>
+          <div class="pf-seg" role="group" aria-label="Prazo" id="iv-prazo">
+            <button type="button" data-p="6m">Até 6 meses</button><button type="button" data-p="1a">1 ano</button><button type="button" data-p="2a">2 anos ou mais</button>
+          </div>
+        </div>
+        <div class="pf-scroll">
+          <table class="pf-tbl" id="iv-rf" data-source="rf_opcoes" data-row-key="opcao">
+            <thead><tr><th data-field="opcao">Opção</th><th data-field="indexador">Rende</th><th class="n" data-field="bruta">Bruta</th><th class="n" id="iv-rf-liq-th" data-field="liq_1a">Líquida</th><th class="n">× CDI líquido</th><th data-field="liquidez">Liquidez</th><th data-field="garantia">Garantia</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pf-card" id="calculadora">
+        <h2 class="pf-h2">Calculadora LCI/LCA × CDB</h2>
+        <p class="pf-note">Quanto um CDB precisa pagar para empatar com uma LCI ou LCA isenta</p>
+        <div class="pf-metas" style="grid-template-columns:1fr">
+          <label for="iv-calc-lci">LCI/LCA (% do CDI)<span><input id="iv-calc-lci" type="number" min="50" max="150" step="0.5" value="90"> %</span></label>
+          <label for="iv-calc-prazo">Prazo
+            <span><select id="iv-calc-prazo" class="iv-select"><option value="0.225">até 6 meses</option><option value="0.2">6 meses a 1 ano</option><option value="0.175" selected>1 a 2 anos</option><option value="0.15">mais de 2 anos</option></select></span></label>
+        </div>
+        <p class="iv-calc-out" id="iv-calc-out" data-source="juros"></p>
+      </div>
+      <div class="pf-card" id="tesouro">
+        <h2 class="pf-h2">Tesouro Direto</h2>
+        <p class="pf-note" id="iv-td-note">Taxas de compra</p>
+        <div class="pf-seg" role="group" aria-label="Tipo de título" id="iv-td-tipo" style="margin-bottom:var(--cds-gap-sm)">
+          <button type="button" data-t="Selic">Selic</button><button type="button" data-t="Prefixado">Prefixado</button><button type="button" data-t="IPCA">IPCA+</button>
+        </div>
+        <div class="pf-scroll" style="max-height:22rem;overflow:auto">
+          <table class="pf-tbl" id="iv-td" data-source="tesouro" data-row-key="titulo">
+            <thead><tr><th data-field="titulo">Título</th><th class="n" data-field="taxa_compra">Taxa</th><th class="n" data-field="preco_compra">Preço mínimo*</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="pf-note" style="margin:var(--cds-gap-xs) 0 0">*Preço de 1 título. No Tesouro Direto dá para comprar frações a partir de 1%.</p>
+      </div>
+    </div>
+
+    <section id="renda-variavel" aria-label="Renda variável">
+      <h2 class="pf-title" style="font-size:var(--cds-font-size-heading)">Renda variável</h2>
+    </section>
+    <div class="pf-grid">
+      <div class="pf-card pf-wide" id="sugestoes-rv">
+        <h2 class="pf-h2">Sugestões de renda variável</h2>
+        <p class="pf-note">Comparação dos seus fundos com outros do mesmo segmento. Dividendos passados não garantem os futuros.</p>
+        <div id="iv-sug-rv" data-source="sugestoes_rv" class="iv-sug"></div>
+      </div>
+      <div class="pf-card pf-wide" id="fundos">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--cds-gap-sm);align-items:flex-start">
+          <div>
+            <h2 class="pf-h2">FIIs e Fiagros</h2>
+            <p class="pf-note">DY de 12 meses sobre a cotação atual (rendimentos informados à CVM) e preço sobre valor patrimonial. Clique no título de uma coluna para ordenar.</p>
+          </div>
+          <select id="iv-seg" class="iv-select" aria-label="Segmento"></select>
+        </div>
+        <div class="pf-scroll" style="max-height:30rem;overflow:auto">
+          <table class="pf-tbl iv-sort" id="iv-fundos" data-source="fundos_ind" data-row-key="ticker">
+            <thead><tr><th data-field="ticker"><button type="button" data-k="ticker">Fundo</button></th><th data-field="segmento"><button type="button" data-k="segmento">Segmento</button></th><th class="n" data-field="preco"><button type="button" data-k="preco">Cotação</button></th><th class="n" data-field="dy"><button type="button" data-k="dy">DY 12m</button></th><th class="n" data-field="premio"><button type="button" data-k="premio">DY − CDI líq.</button></th><th class="n" data-field="p_vp"><button type="button" data-k="p_vp">P/VP</button></th><th class="n" data-field="cotistas"><button type="button" data-k="cotistas">Cotistas</button></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pf-card pf-wide" id="etfs">
+        <h2 class="pf-h2">ETFs</h2>
+        <p class="pf-note">Onde a cotação está entre a mínima e a máxima de 52 semanas</p>
+        <div class="pf-scroll">
+          <table class="pf-tbl" id="iv-etfs" data-source="etfs" data-row-key="ticker">
+            <thead><tr><th data-field="ticker">ETF</th><th data-field="descricao">Acompanha</th><th class="n" data-field="preco">Cotação</th><th style="min-width:10rem">Faixa de 52 semanas</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pf-card pf-wide" id="aviso">
+        <h2 class="pf-h2">Como ler esta aba</h2>
+        <ul style="margin-top:var(--cds-gap-sm)">
+          <li>As sugestões seguem regras simples e visíveis nas fontes de cada número. Elas não consideram seus objetivos, prazos e tolerância a risco além do que está nos dados. Não são recomendação de um analista registrado na CVM.</li>
+          <li><b>Rentabilidade líquida</b>: IR de 22,5% (até 6 meses), 20% (até 1 ano), 17,5% (até 2 anos) e 15% (acima). LCI, LCA, CRI, CRA, poupança e rendimentos de FIIs são isentos para pessoa física. No Tesouro, desconto de 0,20% a.a. de custódia da B3, exceto no Tesouro Selic até R$ 10 mil.</li>
+          <li><b>IPCA+</b>: rendimento nominal estimado com a inflação esperada pelo Focus. <b>Poupança</b>: 0,5% ao mês + TR enquanto a Selic estiver acima de 8,5%.</li>
+          <li>FIIs: rendimento por cota calculado a partir do DY mensal informado pelos administradores à CVM. Quando o administrador não informa, aparece “—”.</li>
+          <li>Carteira deduzida dos lançamentos “RENDIMENTOS DE CLIENTES ... S/ quantidade” da Rico. Ativos sem rendimento no período, CDBs, Tesouro e fundos não aparecem. Mande a posição da B3 para completar.</li>
+        </ul>
+      </div>
     </div>
   </div>
 </div>
@@ -477,6 +651,9 @@ dash.calc('ritmo', {
     xLabels(svg, x, meses.map((mm) => ({mes: mm})), H, W);
   }
 
-  dash.onData(() => { poupanca(); grupos(); });
+  window.pfDraw = window.pfDraw || {};
+  window.pfDraw.orcamento = () => { if (!document.getElementById('orcamento').hidden) { poupanca(); grupos(); } };
+  dash.onData(() => window.pfDraw.orcamento());
 })();
 </script>
+<script src="invest.js"></script>

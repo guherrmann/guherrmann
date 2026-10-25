@@ -80,6 +80,7 @@ def main():
     ap.add_argument("--cache", action="store_true", help="usar financas/dados/bruto.json em vez da API")
     ap.add_argument("--saida", default=str(AQUI / "saida" / "painel.html"))
     ap.add_argument("--datasets", help="pasta onde gravar os JSON do painel interativo no Claude")
+    ap.add_argument("--sem-mercado", action="store_true", help="não baixar dados de mercado (aba Investimentos)")
     ap.add_argument("--hoje", help="data de referência AAAA-MM-DD (padrão: hoje)")
     args = ap.parse_args()
 
@@ -100,6 +101,12 @@ def main():
     print(f"Painel gerado em {saida}", file=sys.stderr)
     if args.datasets:
         nomes = exportar_datasets(resumo, args.datasets)
+        if not args.sem_mercado:
+            import investimentos
+            inv = investimentos.montar(bruto["transacoes"], bruto["saldo"], hoje, DADOS)
+            for nome, linhas in inv.items():
+                (pathlib.Path(args.datasets) / f"{nome}.json").write_text(json.dumps(linhas, ensure_ascii=False))
+            nomes += list(inv)
         print(f"Conjuntos de dados em {args.datasets}: {', '.join(nomes)}", file=sys.stderr)
     print(json.dumps({"indicadores": resumo["indicadores"], "status": resumo["status"]}, ensure_ascii=False, indent=1))
 
