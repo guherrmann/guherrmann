@@ -14,10 +14,10 @@
 
     <div class="pf-grid">
       <div class="pf-card pf-wide" id="juros-hist">
-        <h2 class="pf-h2">CDI e inflação nos últimos 24 meses</h2>
-        <p class="pf-note">Taxa anual. A distância entre as linhas é o juro real.</p>
-        <div class="pf-legend"><span><i style="background:var(--pf-c0)"></i>CDI</span><span><i style="background:var(--pf-c1)"></i>IPCA 12 meses</span></div>
-        <div class="pf-chart" id="iv-ch-juros" data-source="cenario_hist" style="min-height:230px"></div>
+        <h2 class="pf-h2">Seus investimentos contra CDI, inflação e poupança</h2>
+        <p class="pf-note">Taxas anuais nos últimos 24 meses. Minha carteira: proventos dos últimos 12 meses sobre o custo dos ativos que você tem (sem a variação das cotações).</p>
+        <div class="pf-legend"><span><i style="background:var(--pf-c0)"></i>CDI</span><span><i style="background:var(--pf-c1)"></i>IPCA 12 meses</span><span><i style="background:var(--pf-c2)"></i>Poupança</span><span><i style="background:var(--pf-c3)"></i>Minha carteira</span></div>
+        <div class="pf-chart" id="iv-ch-juros" data-source="juros_hist" style="min-height:250px"></div>
       </div>
     </div>
 
@@ -41,6 +41,25 @@
             <tbody></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <section id="aportes" aria-label="Reserva e novos aportes">
+      <h2 class="pf-h2">Conta corrente e novos aportes</h2>
+      <p class="pf-note">R$ 5.000 ficam no Santander para pagar contas. O resto vai para aplicações de liquidez diária, que formam a reserva de emergência.</p>
+      <div class="pf-kpis" id="iv-aporte-kpis"></div>
+    </section>
+    <div class="pf-grid">
+      <div class="pf-card pf-wide" id="aporte-plano">
+        <h2 class="pf-h2">Onde aplicar o disponível</h2>
+        <p class="pf-note">Divisão sugerida entre saque no mesmo dia e risco do Tesouro Nacional. Rendimento líquido para 1 ano.</p>
+        <div class="pf-scroll">
+          <table class="pf-tbl" id="iv-aporte" data-source="aporte_plano" data-row-key="destino">
+            <thead><tr><th data-field="destino">Aplicação</th><th class="n" data-field="parte">Parte</th><th class="n" data-field="valor">Valor</th><th data-field="liquidez">Saque</th><th data-field="garantia">Garantia</th><th class="n" data-field="liq_1a">Líquido a.a.</th><th class="n" data-field="rendimento_ano">Rende por ano</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="pf-note" id="iv-aporte-nota" style="margin:var(--cds-gap-sm) 0 0"></p>
       </div>
     </div>
 
@@ -100,6 +119,11 @@
       <h2 class="pf-title" style="font-size:var(--cds-font-size-heading)">Renda variável</h2>
     </section>
     <div class="pf-grid">
+      <div class="pf-card pf-wide" id="revisar">
+        <h2 class="pf-h2">Ativos para rever</h2>
+        <p class="pf-note">Com cotação abaixo do preço pago, prejuízo ou ganho menor que o CDI desde a compra. Ao vender FII com lucro, paga-se 20% de IR; com prejuízo, ele abate lucros futuros com FIIs.</p>
+        <div id="iv-revisar" data-source="revisar" class="iv-sug"></div>
+      </div>
       <div class="pf-card pf-wide" id="sugestoes-rv">
         <h2 class="pf-h2">Sugestões de renda variável</h2>
         <p class="pf-note">Comparação dos seus fundos com outros do mesmo segmento. Dividendos passados não garantem os futuros.</p>

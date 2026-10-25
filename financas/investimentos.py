@@ -92,7 +92,8 @@ def montar(transacoes, saldo, hoje, pasta_dados):
              "max52": cot.get(t, {}).get("max52"), "volume": cot.get(t, {}).get("volume")} for t, d in mercado.ETFS.items()]
 
     b3_p = pathlib.Path(pasta_dados) / "b3_posicao.json"
-    b3 = json.loads(b3_p.read_text())["ativos"] if b3_p.exists() else {}
+    b3_doc = json.loads(b3_p.read_text()) if b3_p.exists() else {}
+    b3 = b3_doc.get("ativos", {})
     for t, p in b3.items():  # a posição da B3 prevalece sobre a deduzida dos rendimentos
         if not t.startswith("Tesouro"):
             ativos.setdefault(t, {"cotas": None, "rend_12m": 0.0, "ultimo_rend": 0.0, "mes_ultimo": None})["cotas"] = p["cotas"]
@@ -119,7 +120,8 @@ def montar(transacoes, saldo, hoje, pasta_dados):
                              "ultimo_rend": None, "mes_ultimo": None,
                              "custo": None, "proventos": None, "desde": None, "valor_cdi": None})
 
-    return {"cenario": cenario, "cenario_hist": cenario_hist, "focus": focus, "tesouro": tesouro,
+    carteira_hist = [x for x in b3_doc.get("mensal", []) if x["mes"] >= (meses[0] if meses else "")]
+    return {"carteira_hist": carteira_hist, "cenario": cenario, "cenario_hist": cenario_hist, "focus": focus, "tesouro": tesouro,
             "fundos": fundos, "etfs": etfs, "carteira": carteira}
 
 

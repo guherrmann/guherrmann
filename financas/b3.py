@@ -86,6 +86,30 @@ def posicao(linhas, hoje, cdi_mensal=None):
     return resultado
 
 
+def historico_mensal(linhas, ativos_atuais, hoje):
+    """Proventos recebidos e custo acumulado das compras, mês a mês, dos ativos que você tem hoje."""
+    atuais = {a for a in ativos_atuais if not a.startswith("Tesouro")}
+    prov, compras = collections.defaultdict(float), []
+    for e in linhas:
+        if e["ativo"] not in atuais:
+            continue
+        if e["mov"] in PROVENTOS and e["sentido"] == "Credito":
+            prov[e["data"].strftime("%Y-%m")] += e["valor"] or 0
+        elif e["mov"] == COMPRA_VENDA and e["valor"]:
+            compras.append((e["data"].strftime("%Y-%m"), e["valor"] if e["sentido"] == "Credito" else -e["valor"]))
+    if not compras:
+        return []
+    meses, (y, m) = [], map(int, min(c[0] for c in compras).split("-"))
+    while (y, m) <= (hoje.year, hoje.month):
+        meses.append(f"{y}-{m:02d}")
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    out, custo = [], 0.0
+    for mes in meses:
+        custo += sum(v for c, v in compras if c == mes)
+        out.append({"mes": mes, "proventos": round(prov.get(mes, 0.0), 2), "custo": round(custo, 2)})
+    return out
+
+
 def _fator_cdi(cdi_mensal, inicio, fim):
     f = 1.0
     for mes, taxa in sorted(cdi_mensal.items()):
@@ -108,7 +132,8 @@ def main():
     cdi = cdi_mensal_desde(linhas[0]["data"].replace(day=1))
     pos = posicao(linhas, hoje, cdi)
     DADOS.mkdir(exist_ok=True)
-    saida = {"gerado_em": hoje.isoformat(), "periodo": [linhas[0]["data"].isoformat(), linhas[-1]["data"].isoformat()], "ativos": pos}
+    saida = {"gerado_em": hoje.isoformat(), "periodo": [linhas[0]["data"].isoformat(), linhas[-1]["data"].isoformat()], "ativos": pos,
+             "mensal": historico_mensal(linhas, pos, hoje)}
     (DADOS / "b3_posicao.json").write_text(json.dumps(saida, ensure_ascii=False, indent=1))
     for a, p in sorted(pos.items()):
         print(f"{a:20} {p['cotas']:>8} custo={p['custo']} proventos={p['proventos']} cdi={p['valor_cdi']} desde={p['desde']}")

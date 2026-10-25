@@ -241,8 +241,98 @@ dash.calc('sugestoes_rv', {
   },
 });
 
+dash.calc('juros_hist', {
+  inputs: ['cenario_hist', 'carteira_hist'],
+  title: 'CDI, IPCA, poupança e sua carteira por mês',
+  description: 'CDI e IPCA 12 meses do Banco Central; poupança pela regra da Selic (0,5% ao mês + TR acima de 8,5%, senão 70% da Selic, sem TR); carteira: proventos dos últimos 12 meses ÷ custo médio das compras dos ativos que você tem hoje.',
+  fn: (cenario_hist, carteira_hist) => {
+    const atual = carteira_hist.length ? carteira_hist[carteira_hist.length - 1].mes : null;  // mês corrente, incompleto
+    const completos = carteira_hist.filter((x) => x.mes !== atual);
+    return cenario_hist.map((c) => {
+      const selic = Number(c.selic);
+      const i = completos.findIndex((x) => x.mes === c.mes);
+      let carteira = null;
+      if (i >= 11) {
+        const jan = completos.slice(i - 11, i + 1);
+        const custo = jan.reduce((s, x) => s + Number(x.custo), 0) / 12;
+        if (custo > 0) carteira = Math.round(jan.reduce((s, x) => s + Number(x.proventos), 0) / custo * 1000) / 10;
+      }
+      return {mes: c.mes, cdi: c.cdi == null ? null : Number(c.cdi), ipca_12m: c.ipca_12m == null ? null : Number(c.ipca_12m),
+        poupanca: isNaN(selic) ? null : selic > 8.5 ? 6.17 : Math.round(selic * 70) / 100, carteira};
+    });
+  },
+});
+
+dash.calc('aporte_resumo', {
+  inputs: ['carteira', 'reserva'],
+  title: 'Dinheiro disponível para investir',
+  description: 'Saldo do Santander acima dos R$ 5.000 que ficam para pagar contas, mais o saldo parado na XP. A reserva de emergência ideal é 6 meses da saída média.',
+  fn: (carteira, reserva) => {
+    const FICA_NA_CONTA = 5000;  // definido por você
+    const conta = (s) => carteira.filter((c) => c.classe === 'Caixa' && c.ativo.toUpperCase().includes(s)).reduce((t, c) => t + (Number(c.valor) || 0), 0);
+    const santander = conta('SANTANDER'), outras = carteira.filter((c) => c.classe === 'Caixa' && !c.ativo.toUpperCase().includes('SANTANDER')).reduce((t, c) => t + (Number(c.valor) || 0), 0);
+    const r = reserva[0] || {};
+    const disponivel = Math.max(0, santander - FICA_NA_CONTA) + outras;
+    return [{santander, fica_na_conta: FICA_NA_CONTA, excedente_santander: Math.max(0, santander - FICA_NA_CONTA), outras_contas: outras, disponivel,
+      alvo_reserva: r.alvo || null, falta_reserva: r.alvo ? Math.max(0, r.alvo - disponivel) : null}];
+  },
+});
+
+dash.calc('aporte_plano', {
+  inputs: ['aporte_resumo', 'rf_opcoes'],
+  title: 'Onde aplicar o dinheiro disponível',
+  description: 'Divisão do disponível entre aplicações de liquidez diária: 60% em CDB de liquidez diária a 100% do CDI (saque no mesmo dia, FGC) e 40% no Tesouro Selic (saque em D+1, sem custódia até R$ 10 mil), com o rendimento líquido de 1 ano.',
+  fn: (aporte_resumo, rf_opcoes) => {
+    const a = aporte_resumo[0];
+    if (!a || !a.disponivel) return [];
+    const cdb = rf_opcoes.find((o) => o.opcao.startsWith('CDB liquidez')), sel = rf_opcoes.find((o) => o.opcao.startsWith('Tesouro Selic'));
+    return [
+      {destino: 'CDB liquidez diária, 100% do CDI ou mais', parte: 60, opcao: cdb},
+      {destino: sel ? sel.opcao : 'Tesouro Selic', parte: 40, opcao: sel},
+    ].filter((x) => x.opcao).map((x) => {
+      const valor = Math.round(a.disponivel * x.parte / 100 * 100) / 100;
+      return {destino: x.destino, parte: x.parte, valor, liquidez: x.opcao.liquidez, garantia: x.opcao.garantia,
+        liq_1a: x.opcao.liq_1a, rendimento_ano: Math.round(valor * x.opcao.liq_1a / 100 * 100) / 100};
+    });
+  },
+});
+
+dash.calc('revisar', {
+  inputs: ['carteira_ativos', 'fundos_ind', 'rf_opcoes'],
+  title: 'Ativos para rever',
+  description: 'Ativos com cotação abaixo do custo, resultado negativo ou ganho menor que o CDI líquido desde a compra, com alternativas: fundo do mesmo segmento com DY maior e P/VP até 1, Tesouro Selic e o Tesouro IPCA+ de maior taxa (líquidos para 2 anos ou mais).',
+  fn: (carteira_ativos, fundos_ind, rf_opcoes) => {
+    const td = rf_opcoes.filter((o) => o.opcao.startsWith('Tesouro') && o.liq_2a != null);
+    const rf = td.filter((o) => o.opcao.startsWith('Tesouro Selic'))[0];
+    const rf2 = td.filter((o) => o.opcao.startsWith('Tesouro IPCA')).sort((a, b) => b.liq_2a - a.liq_2a)[0];
+    const out = [];
+    carteira_ativos.forEach((a) => {
+      if (a.custo == null || a.valor == null) return;
+      const abaixoCusto = a.valor < a.custo, prejuizo = a.resultado < 0, abaixoCdi = a.vs_cdi != null && a.vs_cdi < -Math.max(10, a.custo * 0.05);
+      if (!abaixoCusto && !prejuizo && !abaixoCdi) return;
+      const meu = fundos_ind.find((f) => f.ticker === a.ativo);
+      const alt = meu ? fundos_ind.filter((f) => f.segmento === meu.segmento && !f.na_carteira && f.dy != null && f.p_vp != null && f.p_vp <= 1 && (f.cotistas || 0) >= 50000 && (meu.dy == null || f.dy > meu.dy))
+        .sort((x, y) => y.dy - x.dy)[0] : null;
+      const motivos = [];
+      if (prejuizo) motivos.push('prejuízo mesmo com os proventos');
+      if (abaixoCusto) motivos.push('cotação abaixo do preço pago');
+      if (abaixoCdi) motivos.push('rendeu menos que o CDI');
+      const trocar = prejuizo || (abaixoCusto && abaixoCdi);
+      out.push({ativo: a.ativo, nivel: prejuizo ? 'critical' : trocar ? 'warning' : 'info',
+        acao: trocar ? 'Negociar ou trocar' : 'Acompanhar', motivos: motivos.join(', '),
+        variacao_cotacao: Math.round((a.valor - a.custo) * 100) / 100, resultado: a.resultado, vs_cdi: a.vs_cdi, desde: a.desde,
+        alt_fundo: alt ? alt.ticker : null, alt_fundo_dy: alt ? alt.dy : null, alt_fundo_pvp: alt ? alt.p_vp : null, dy_atual: meu ? meu.dy : null,
+        alt_rf: rf ? rf.opcao : null, alt_rf_liq: rf ? rf.liq_2a : null,
+        alt_rf2: rf2 ? rf2.opcao : null, alt_rf2_idx: rf2 ? rf2.indexador : null, alt_rf2_liq: rf2 ? rf2.liq_2a : null});
+    });
+    const peso = {critical: 0, warning: 1, info: 2};
+    return out.sort((x, y) => peso[x.nivel] - peso[y.nivel] || (x.vs_cdi ?? 0) - (y.vs_cdi ?? 0));
+  },
+});
+
 (() => {
   const F = window.pfFmt;
+  [2, 3].forEach((i) => document.querySelector('.pf').style.setProperty('--pf-c' + i, dash.colors[i]));
   const pc2 = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%';
   const pc1 = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + '%';
   const num2 = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -343,17 +433,22 @@ dash.calc('sugestoes_rv', {
   }
 
   function graficoJuros() {
-    const host = document.getElementById('iv-ch-juros'), d = dash.data('cenario_hist');
+    const host = document.getElementById('iv-ch-juros'), d = dash.data('juros_hist');
     if (!visivel()) return;
     if (d.status !== 'ok') { failed(host, d); return; }
     const rows = d.data.filter((r) => r.cdi != null && r.ipca_12m != null);
     if (!rows.length) { host.replaceChildren(); return; }
-    const W = Math.max(280, host.clientWidth), H = 230, T = 14, B = 24;
+    const series = [['cdi', 0, 'CDI'], ['ipca_12m', 1, 'IPCA 12m'], ['poupanca', 2, 'Poupança'], ['carteira', 3, 'Minha carteira']];
+    const W = Math.max(300, host.clientWidth), H = 250, T = 14, B = 24;
     host.innerHTML = '';
     const svg = d3.select(host).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
-    const y = d3.scaleLinear([0, d3.max(rows, (r) => Math.max(r.cdi, r.ipca_12m)) * 1.1], [H - B, T]).nice(4);
+    const medir = (txt) => { const n = svg.append('text').text(txt); const w = n.node().getComputedTextLength(); n.remove(); return w; };
+    const max = d3.max(rows, (r) => Math.max(...series.map(([k]) => r[k] ?? 0)));
+    const y = d3.scaleLinear([0, max * 1.1], [H - B, T]).nice(4);
     const fmt = (v) => v + '%';
-    const L = 8 + d3.max(y.ticks(4), (v) => fmt(v).length) * 6.5, R = 64;
+    const L = 10 + d3.max(y.ticks(4), (v) => medir(fmt(v)));
+    const ultimos = series.map(([k, c, nome]) => { const u = [...rows].reverse().find((r) => r[k] != null); return u ? {k, c, nome, u, txt: `${nome} ${pc1(u[k])}`} : null; }).filter(Boolean);
+    const R = 14 + d3.max(ultimos, (s) => medir(s.txt));
     const x = d3.scalePoint(rows.map((r) => r.mes), [L, W - R]);
     y.ticks(4).forEach((v) => {
       svg.append('line').attr('x1', L).attr('x2', W - R).attr('y1', y(v)).attr('y2', y(v)).attr('stroke', v === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)');
@@ -361,11 +456,16 @@ dash.calc('sugestoes_rv', {
     });
     const every = W < 520 ? 6 : 3;
     rows.forEach((r, i) => { if ((rows.length - 1 - i) % every === 0) svg.append('text').attr('x', x(r.mes)).attr('y', H - 6).attr('text-anchor', 'middle').text(F.mes(r.mes)); });
-    [['cdi', 0, 'CDI'], ['ipca_12m', 1, 'IPCA']].forEach(([k, c, nome]) => {
-      svg.append('path').attr('d', d3.line().x((r) => x(r.mes)).y((r) => y(r[k]))(rows)).attr('fill', 'none').attr('stroke', dash.colors[c]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
-      const u = rows[rows.length - 1];
-      svg.append('circle').attr('cx', x(u.mes)).attr('cy', y(u[k])).attr('r', 4).attr('fill', dash.colors[c]).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2);
-      svg.append('text').attr('x', x(u.mes) + 8).attr('y', y(u[k]) + 4).text(`${nome} ${pc2(u[k])}`);
+    ultimos.forEach(({k, c}) => {
+      svg.append('path').attr('d', d3.line().defined((r) => r[k] != null).x((r) => x(r.mes)).y((r) => y(r[k]))(rows)).attr('fill', 'none')
+        .attr('stroke', dash.colors[c]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
+    });
+    // Rótulos no fim das linhas, afastados para não se sobreporem.
+    const pos = ultimos.map((s) => ({...s, ly: y(s.u[s.k])})).sort((a, b) => a.ly - b.ly);
+    for (let i = 1; i < pos.length; i++) if (pos[i].ly - pos[i - 1].ly < 14) pos[i].ly = pos[i - 1].ly + 14;
+    pos.forEach((s) => {
+      svg.append('circle').attr('cx', x(s.u.mes)).attr('cy', y(s.u[s.k])).attr('r', 4).attr('fill', dash.colors[s.c]).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2);
+      svg.append('text').attr('x', W - R + 8).attr('y', s.ly + 4).text(s.txt);
     });
     const rule = svg.append('line').attr('y1', T).attr('y2', H - B).attr('stroke', 'var(--cds-chart-axis)').attr('opacity', 0);
     let tip = host.querySelector('.pf-tip'); if (!tip) { tip = el('div', {class: 'pf-tip'}); host.appendChild(tip); }
@@ -375,7 +475,7 @@ dash.calc('sugestoes_rv', {
         const i = Math.max(0, Math.min(rows.length - 1, Math.round((mx - L) / ((W - R - L) / (rows.length - 1 || 1)))));
         const r = rows[i];
         rule.attr('x1', x(r.mes)).attr('x2', x(r.mes)).attr('opacity', 1);
-        tip.innerHTML = `<div class="t">${F.mes(r.mes)}</div><div class="r"><span><i style="background:${dash.colors[0]}"></i>CDI</span><span>${pc2(r.cdi)}</span></div><div class="r"><span><i style="background:${dash.colors[1]}"></i>IPCA 12m</span><span>${pc2(r.ipca_12m)}</span></div><div class="r"><span>Juro real</span><span>${pc2(((1 + r.cdi / 100) / (1 + r.ipca_12m / 100) - 1) * 100)}</span></div>`;
+        tip.innerHTML = `<div class="t">${F.mes(r.mes)}</div>` + series.map(([k, c, nome]) => `<div class="r"><span><i style="background:${dash.colors[c]}"></i>${nome}</span><span>${pc2(r[k])}</span></div>`).join('');
         tip.style.opacity = 1;
         const b = host.getBoundingClientRect();
         tip.style.left = Math.max(0, Math.min(ev.clientX - b.left + 12, b.width - tip.offsetWidth)) + 'px';
@@ -442,6 +542,48 @@ dash.calc('sugestoes_rv', {
         el('td', {class: 'n iv-muted'}, a.desde ? F.mes(a.desde.slice(0, 7)) : '—'));
       return row;
     }));
+
+    // Reserva da conta e novos aportes
+    const ar = dash.data('aporte_resumo'), arr = ar.status === 'ok' ? ar.data[0] : null, ak = document.getElementById('iv-aporte-kpis');
+    if (arr) {
+      kpi(ak, [
+        {l: 'Santander', v: F.brl2(arr.santander), src: 'aporte_resumo', field: 'santander', d: `${F.brl(arr.fica_na_conta)} ficam para pagar contas`},
+        {l: 'Disponível para investir', v: F.brl2(arr.disponivel), src: 'aporte_resumo', field: 'disponivel', d: `${F.brl(arr.excedente_santander)} do Santander + ${F.brl(arr.outras_contas)} parados na XP`,
+          st: arr.disponivel > 0 ? ['warning', '! Aplicar em liquidez diária'] : ['good', '✓ Nada parado']},
+        {l: 'Falta para a reserva ideal', v: arr.falta_reserva == null ? '—' : F.brl(arr.falta_reserva), src: 'aporte_resumo', field: 'falta_reserva', d: arr.alvo_reserva ? `meta de ${F.brl(arr.alvo_reserva)} (6 meses de gastos)` : ''},
+      ]);
+    } else { failed(ak, ar); }
+    const ap = dash.data('aporte_plano'), apb = document.querySelector('#iv-aporte tbody');
+    apb.replaceChildren(...(ap.status === 'ok' ? ap.data : []).map((x) => {
+      const row = el('tr', {});
+      row.append(el('td', {}, x.destino), el('td', {class: 'n'}, x.parte + '%'), el('td', {class: 'n'}, F.brl2(x.valor)), el('td', {class: 'iv-muted'}, x.liquidez),
+        el('td', {class: 'iv-muted'}, x.garantia), el('td', {class: 'n'}, pc2(x.liq_1a)), el('td', {class: 'n iv-pos'}, '+' + F.brl(x.rendimento_ano)));
+      return row;
+    }));
+    const tot = ap.status === 'ok' ? ap.data.reduce((s, x) => s + x.rendimento_ano, 0) : 0;
+    document.getElementById('iv-aporte-nota').textContent = ap.status === 'ok' && ap.data.length
+      ? `Juntas, rendem cerca de ${F.brl(tot)} por ano já descontado o IR, com saque no mesmo dia (CDB) ou no dia seguinte (Tesouro). Resgates antes de 30 dias pagam IOF. Escolha um CDB de banco grande ou de corretora que pague 100% do CDI ou mais com liquidez diária.`
+      : '';
+
+    // Ativos para rever
+    const rv = dash.data('revisar'), rvh = document.getElementById('iv-revisar');
+    if (rv.status === 'ok') {
+      if (!rv.data.length) rvh.replaceChildren(el('p', {class: 'pf-note'}, 'Nenhum ativo com prejuízo ou abaixo do CDI.'));
+      else rvh.replaceChildren(...rv.data.map((r) => {
+        const item = el('div', {class: 'iv-rev'});
+        const head = el('div', {class: 'iv-rev-h'});
+        head.append(el('b', {}, r.ativo), el('span', {class: 'pf-st ' + r.nivel}, (r.nivel === 'critical' ? '✕ ' : r.nivel === 'warning' ? '! ' : 'i ') + r.acao));
+        item.append(head);
+        const sinal = (v) => v == null ? '—' : (v > 0 ? '+' : '') + F.brl(v);
+        item.append(el('p', {}, `${r.motivos[0].toUpperCase() + r.motivos.slice(1)}. Cotação ${sinal(r.variacao_cotacao)} contra o preço pago; com proventos, ${sinal(r.resultado)}; contra o CDI líquido, ${sinal(r.vs_cdi)}${r.desde ? ` desde ${F.mes(r.desde.slice(0, 7))}` : ''}.`));
+        const opc = [];
+        if (r.alt_fundo) opc.push(`${r.alt_fundo}, mesmo segmento: DY ${pc1(r.alt_fundo_dy)} (o seu: ${pc1(r.dy_atual)}) e P/VP ${num2(r.alt_fundo_pvp)}`);
+        if (r.alt_rf) opc.push(`${r.alt_rf}: ${pc2(r.alt_rf_liq)} ao ano líquido, com liquidez diária`);
+        if (r.alt_rf2) opc.push(`${r.alt_rf2} (${r.alt_rf2_idx}): ≈ ${pc2(r.alt_rf2_liq)} ao ano líquido, protegido da inflação até o vencimento`);
+        if (opc.length) item.append(el('p', {class: 'iv-opc'}, 'Opções: ' + opc.join(' · ')));
+        return item;
+      }));
+    } else { failed(rvh, rv); }
 
     // Renda fixa
     sugestoes('iv-sug-rf', 'sugestoes_rf');
