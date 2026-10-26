@@ -1,4 +1,12 @@
 <style>
+.sim-ctrl{display:flex;flex-wrap:wrap;gap:var(--cds-gap-md);align-items:flex-end}
+.sim-ctrl label{display:flex;flex-direction:column;gap:4px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);min-width:0}
+.sim-ctrl label:first-child{flex:1 1 18rem;max-width:28rem}
+.sim-ctrl select,.sim-ctrl input{font:inherit;font-size:var(--cds-font-size-body);padding:6px 8px;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);min-width:0}
+.sim-ctrl input{width:9rem;text-align:right;font-variant-numeric:tabular-nums}
+.sim-ctrl select:focus-visible,.sim-ctrl input:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
+.sim-tbl th.sim-sel,.sim-tbl td.sim-sel{background:var(--color-bg)}
+.sim-tbl td:first-child{white-space:nowrap;font-weight:var(--cds-font-weight-medium)}
 .sg-tbl .sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:2px;font-weight:400}
 .sg-tbl td{vertical-align:top}
 .sg-tbl .pf-st{margin:4px 4px 0 0}
@@ -305,6 +313,25 @@
         <h1 class="pf-title">Sugestões de investimento</h1>
         <p class="pf-take" id="sg-cen" data-source="sug_cenario"><span class="dash-skeleton">—</span></p>
       </div>
+    </div>
+
+    <div class="pf-card" id="simulador">
+      <h2 class="pf-h2">Simulador de investimentos</h2>
+      <p class="pf-note">Escolha um investimento, o valor inicial e o aporte mensal. A projeção compara com o CDI, o Tesouro Selic, o Tesouro IPCA+ e a poupança, já descontados IR e custódia, com as taxas esperadas pelo Focus ano a ano.</p>
+      <div class="sim-ctrl">
+        <label for="sim-ativo">Investimento<select id="sim-ativo" class="iv-select"></select></label>
+        <label for="sim-inicial">Valor inicial (R$)<input id="sim-inicial" type="number" min="0" step="100" value="1000" inputmode="decimal"></label>
+        <label for="sim-aporte">Aporte mensal (R$)<input id="sim-aporte" type="number" min="0" step="50" value="500" inputmode="decimal"></label>
+        <label for="sim-taxa" id="sim-taxa-box" hidden>Rendimento esperado (% a.a.)<input id="sim-taxa" type="number" min="-50" max="100" step="0.5" inputmode="decimal"></label>
+      </div>
+      <p class="pf-note" id="sim-regra" style="margin:var(--cds-gap-sm) 0"></p>
+      <div class="pf-scroll">
+        <table class="pf-tbl sg-tbl sim-tbl" id="sim-tab" data-source="sim_taxas">
+          <thead><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="pf-note" style="margin:var(--cds-gap-sm) 0 0">Rendimento = saldo líquido − total investido. O IR é cobrado sobre o ganho no resgate (17,5% em 1 ano e 15% a partir de 2 anos; ETFs 15%), como se todo o dinheiro tivesse o prazo total, o que subestima um pouco o imposto dos aportes mais recentes. Projeção, não promessa: as taxas de longo prazo seguem o Focus e ficam no último valor dele.</p>
     </div>
 
     <div class="pf-card" id="sug-renda-fixa">

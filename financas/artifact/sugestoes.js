@@ -107,6 +107,58 @@ dash.calc('sug_etf', {
   })),
 });
 
+dash.calc('sim_taxas', {
+  inputs: ['sug_cenario', 'focus', 'tesouro', 'sug_fii', 'sug_etf'],
+  title: 'Taxas projetadas para o simulador',
+  description: 'Taxa bruta anual de cada investimento, ano a ano por 20 anos. CDI: média esperada dos próximos 12 meses no 1º ano; depois, a média entre a Selic de fim de ano do Focus de um ano e do seguinte (menos 0,10), ficando no último valor do Focus a partir daí. IPCA: mediana do Focus de cada ano, depois o último valor. FIIs de crédito: DY × CDI do ano ÷ CDI atual; FIIs de imóveis: DY + 80% do IPCA (valorização da cota, com 20% de IR na venda). ETFs: inflação + 6% ao ano como ponto de partida editável.',
+  fn: (sug_cenario, focus, tesouro, sug_fii, sug_etf) => {
+    const c = sug_cenario[0];
+    if (!c) return [];
+    const N = 20;
+    const serie = (ind) => { const m = {}; focus.filter((f) => f.indicador === ind).forEach((f) => { m[Number(f.ano)] = Number(f.mediana); }); return m; };
+    const selicFim = serie('Selic'), ipcaAno = serie('IPCA');
+    const anosS = Object.keys(selicFim).map(Number).sort(), anosI = Object.keys(ipcaAno).map(Number).sort();
+    const fimDe = (a) => selicFim[Math.min(Math.max(a, anosS[0]), anosS[anosS.length - 1])];
+    const ipcaDe = (a) => ipcaAno[Math.min(Math.max(a, anosI[0]), anosI[anosI.length - 1])];
+    const a0 = Number(c.ano0);
+    const cdi = [], ipca = [];
+    for (let y = 1; y <= N; y++) {
+      cdi.push(y === 1 ? c.cdi12 : (fimDe(a0 + y - 1) + fimDe(a0 + y)) / 2 - 0.1);
+      ipca.push(y === 1 ? (c.ipca_f1 ?? c.ipca) : ipcaDe(a0 + y));
+    }
+    const r2 = (x) => Math.round(x * 100) / 100;
+    const linha = (o) => ({...o, taxas: o.taxas.map(r2)});
+    const titulo = (tipo, anoMin) => tesouro.filter((t) => t.tipo === tipo).sort((a, b) => a.vencimento.localeCompare(b.vencimento)).find((t) => Number(t.vencimento.slice(0, 4)) >= anoMin);
+    const anosAte = (venc) => Math.max(1, Math.round((new Date(venc) - new Date(`${a0}-11-01`)) / (365.25 * 864e5)));
+    const out = [];
+    const RF = 'Renda fixa';
+    out.push({id: 'cdi100', grupo: RF, nome: 'CDB liquidez diária 100% do CDI', taxas: cdi.slice(), isento: false, custodia: 0, ir: 'regressivo', regra: '100% do CDI esperado'});
+    out.push({id: 'cdb110', grupo: RF, nome: 'CDB 110% do CDI (referência)', taxas: cdi.map((x) => x * 1.1), isento: false, custodia: 0, ir: 'regressivo', regra: '110% do CDI esperado'});
+    out.push({id: 'lci90', grupo: RF, nome: 'LCI/LCA 90% do CDI (referência)', taxas: cdi.map((x) => x * 0.9), isento: true, custodia: 0, ir: 'isento', regra: '90% do CDI esperado, isento'});
+    const sel = titulo('Tesouro Selic', a0 + 2);
+    if (sel) out.push({id: 'selic', grupo: RF, nome: sel.titulo, taxas: cdi.map((x) => x + 0.1 + Number(sel.taxa_compra)), isento: false, custodia: 0, ir: 'regressivo', regra: `Selic esperada + ${sel.taxa_compra}%; reaplicado no vencimento`});
+    const pre = titulo('Tesouro Prefixado', a0 + 3);
+    if (pre) { const m = anosAte(pre.vencimento); out.push({id: 'pre', grupo: RF, nome: pre.titulo, taxas: cdi.map((x, i) => i < m ? Number(pre.taxa_compra) : x), isento: false, custodia: 0.2, ir: 'regressivo', regra: `${pre.taxa_compra}% até o vencimento; depois, CDI`}); }
+    [a0 + 3, a0 + 9].forEach((a, k) => {
+      const t = titulo('Tesouro IPCA+', a);
+      if (!t) return;
+      const m = anosAte(t.vencimento), real = Number(t.taxa_compra);
+      out.push({id: k ? 'ipca_longo' : 'ipca_curto', grupo: RF, nome: t.titulo, taxas: ipca.map((x, i) => i < m ? ((1 + real / 100) * (1 + x / 100) - 1) * 100 : cdi[i]),
+        isento: false, custodia: 0.2, ir: 'regressivo', regra: `IPCA esperado + ${real}% até o vencimento; depois, CDI`});
+    });
+    out.push({id: 'poupanca', grupo: RF, nome: 'Poupança', taxas: cdi.map((x) => (x + 0.1) > 8.5 ? (Math.pow(1.005, 12) - 1) * 100 : (x + 0.1) * 0.7), isento: true, custodia: 0, ir: 'isento', regra: '0,5% ao mês acima de Selic 8,5%; senão 70% da Selic (sem TR)'});
+    sug_fii.filter((f) => !f.inconsistente).sort((a, b) => a.segmento.localeCompare(b.segmento) || a.ticker.localeCompare(b.ticker)).forEach((f) => {
+      const credito = ['Papel (CRI)', 'Fiagro (CRA)'].includes(f.segmento);
+      out.push({id: 'fii_' + f.ticker, grupo: 'FIIs e Fiagros', nome: `${f.ticker} · ${f.segmento}`, isento: true, custodia: 0, ir: 'isento',
+        taxas: credito ? cdi.map((x) => f.dy * x / c.cdi) : ipca.map((x) => f.dy + x * 0.8),
+        regra: credito ? `DY de ${f.dy}% acompanhando o CDI, rendimentos reinvestidos, cota estável` : `DY de ${f.dy}% + valorização da cota pela inflação (com 20% de IR na venda), rendimentos reinvestidos`});
+    });
+    sug_etf.forEach((e) => out.push({id: 'etf_' + e.ticker, grupo: 'ETFs', nome: `${e.ticker} · ${e.descricao}`, taxas: ipca.map((x) => x + 6), isento: false, custodia: 0, ir: '15%', editavel: true,
+      regra: `Sem projeção oficial: começa em inflação + 6% ao ano (edite). Nos últimos 12 meses rendeu ${String(e.retorno_12m).replace('.', ',')}%`}));
+    return out.map(linha);
+  },
+});
+
 (() => {
   const F = window.pfFmt;
   const pc = (v, n = 2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: n, maximumFractionDigits: n}) + '%';
@@ -126,6 +178,76 @@ dash.calc('sug_etf', {
     ordem = {k: b.dataset.k, desc: ordem.k === b.dataset.k ? !ordem.desc : !['ticker', 'segmento', 'p_vp'].includes(b.dataset.k)};
     fiis();
   });
+
+  // Simulador
+  const simSel = document.getElementById('sim-ativo'), simIni = document.getElementById('sim-inicial'), simAp = document.getElementById('sim-aporte');
+  const simTaxa = document.getElementById('sim-taxa'), simTaxaBox = document.getElementById('sim-taxa-box');
+  let taxaEditada = null;
+  simSel.addEventListener('change', () => { taxaEditada = null; simulador(); });
+  [simIni, simAp].forEach((i) => i.addEventListener('input', simulador));
+  simTaxa.addEventListener('input', () => { taxaEditada = simTaxa.value === '' ? null : Number(simTaxa.value); simulador(); });
+  const HORIZ = [1, 2, 5, 10, 20];
+  const irDe = (row, anos) => row.isento ? 0 : row.ir === '15%' ? 0.15 : anos < 2 ? 0.175 : 0.15;
+
+  function projetar(row, taxas, inicial, aporte) {
+    const out = {};
+    let saldo = inicial, investido = inicial;
+    for (let m = 1; m <= 12 * 20; m++) {
+      const r = taxas[Math.ceil(m / 12) - 1];
+      saldo = saldo * Math.pow(1 + r / 100, 1 / 12) * (1 - (row.custodia || 0) / 100 / 12) + aporte;
+      investido += aporte;
+      if (m % 12 === 0 && HORIZ.includes(m / 12)) {
+        const ganho = saldo - investido, ir = ganho > 0 ? ganho * irDe(row, m / 12) : 0;
+        out[m / 12] = {liquido: saldo - ir, ganho: ganho - ir, investido};
+      }
+    }
+    const a1 = ((1 + taxas[0] / 100) * (1 - (row.custodia || 0) / 100) - 1) * (1 - irDe(row, 1)) * 100;
+    return {anual: a1, mensal: (Math.pow(1 + a1 / 100, 1 / 12) - 1) * 100, h: out};
+  }
+
+  function simulador() {
+    const d = dash.data('sim_taxas'), tab = document.getElementById('sim-tab');
+    const th = tab.querySelector('thead tr'), tb = tab.querySelector('tbody');
+    if (d.status !== 'ok' || !d.data.length) { th.replaceChildren(); if (d.status === 'error') tb.innerHTML = '<tr><td><div class="pf-err">Falhou ao carregar</div></td></tr>'; else tb.replaceChildren(); return; }
+    if (!simSel.options.length) {
+      const grupos = {};
+      d.data.forEach((r) => { (grupos[r.grupo] = grupos[r.grupo] || []).push(r); });
+      Object.entries(grupos).forEach(([g, rows]) => { const og = document.createElement('optgroup'); og.label = g; rows.forEach((r) => og.append(new Option(r.nome, r.id))); simSel.append(og); });
+      simSel.value = 'lci90';
+    }
+    const por = Object.fromEntries(d.data.map((r) => [r.id, r]));
+    const escolhido = por[simSel.value] || d.data[0];
+    simTaxaBox.hidden = !escolhido.editavel;
+    if (escolhido.editavel && taxaEditada == null && simTaxa !== document.activeElement) simTaxa.value = escolhido.taxas[0];
+    document.getElementById('sim-regra').textContent = `${escolhido.nome}: ${escolhido.regra}.`;
+    const inicial = Math.max(0, Number(simIni.value) || 0), aporte = Math.max(0, Number(simAp.value) || 0);
+    const colunas = [{row: escolhido, titulo: 'Investimento selecionado', sub: escolhido.nome, sel: true},
+      {row: por.cdi100, titulo: '100% do CDI', sub: 'CDB liquidez diária'}, {row: por.selic, titulo: 'Tesouro Selic', sub: por.selic && por.selic.nome},
+      {row: por.ipca_longo || por.ipca_curto, titulo: 'Tesouro IPCA+', sub: (por.ipca_longo || por.ipca_curto || {}).nome}, {row: por.poupanca, titulo: 'Poupança', sub: 'regra atual'}].filter((c) => c.row);
+    colunas.forEach((c) => {
+      const taxas = c.sel && escolhido.editavel && taxaEditada != null ? escolhido.taxas.map(() => taxaEditada) : c.row.taxas;
+      c.p = projetar(c.row, taxas, inicial, aporte);
+    });
+    th.replaceChildren(el('th', {}, ''), ...colunas.map((c) => { const h = el('th', {class: 'n' + (c.sel ? ' sim-sel' : '')}); h.append(document.createTextNode(c.titulo), el('div', {class: 'sub'}, c.sub || '')); return h; }));
+    const linhas = [['Rendimento anual (%)', (c) => [pc(c.p.anual), 'líquido no 1º ano']], ['Rendimento mensal (%)', (c) => [pc(c.p.mensal, 3), 'equivalente ao mês']]]
+      .concat(HORIZ.map((n) => [`Rendimento em ${n} ${n === 1 ? 'ano' : 'anos'} (R$)`, (c) => [F.brl(c.p.h[n].ganho), `saldo ${F.brl(c.p.h[n].liquido)}`]]));
+    const melhor = (fn) => Math.max(...colunas.map((c) => fn(c)));
+    tb.replaceChildren(...linhas.map(([rotulo, f], i) => {
+      const tr = el('tr', {});
+      tr.append(el('td', {}, rotulo));
+      const valorDe = (c) => i === 0 ? c.p.anual : i === 1 ? c.p.mensal : c.p.h[HORIZ[i - 2]].ganho;
+      const top = melhor(valorDe);
+      colunas.forEach((c) => {
+        const [v, s] = f(c), td = el('td', {class: 'n' + (c.sel ? ' sim-sel' : '')});
+        const b = el('b', {}, v); if (Math.abs(valorDe(c) - top) < 0.005) b.className = 'iv-pos';
+        td.append(b, el('div', {class: 'sub'}, s));
+        tr.append(td);
+      });
+      return tr;
+    }));
+    const inv = colunas[0].p.h;
+    document.getElementById('sim-regra').append(document.createTextNode(` Total investido: ${F.brl(inv[1].investido)} em 1 ano, ${F.brl(inv[5].investido)} em 5 anos, ${F.brl(inv[20].investido)} em 20 anos.`));
+  }
 
   function seta(hoje, tend) {
     if (hoje == null || tend == null) return ['iv-muted', ''];
@@ -226,5 +348,5 @@ dash.calc('sug_etf', {
       document.createTextNode(' → '), b(pc(c.ipca_f1), 'ipca_f1'), document.createTextNode(` esperado para ${c.ano1}.`));
   }
 
-  dash.onData(() => { cenario(); rf(); fiis(); etfs(); });
+  dash.onData(() => { cenario(); simulador(); rf(); fiis(); etfs(); });
 })();

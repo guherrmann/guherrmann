@@ -72,7 +72,7 @@ def montar(transacoes, saldo, hoje, pasta_dados):
     cenario_hist = [{"mes": m, "cdi": hist["cdi"].get(m), "selic": hist["selic_meta"].get(m), "ipca_12m": hist["ipca_12m"].get(m)}
                     for m in meses]
     focus = [{"indicador": x["Indicador"], "ano": int(x["DataReferencia"]), "mediana": x["Mediana"], "data": x["Data"]}
-             for x in foc if int(x["DataReferencia"]) <= hoje.year + 2]
+             for x in foc if int(x["DataReferencia"]) <= hoje.year + 4]
 
     fundos = []
     for t in fundos_t:
