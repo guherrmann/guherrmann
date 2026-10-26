@@ -1,4 +1,7 @@
 <style>
+.sg-tbl .sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:2px;font-weight:400}
+.sg-tbl td{vertical-align:top}
+.sg-tbl .pf-st{margin:4px 4px 0 0}
 .iv-cp-item{display:flex;flex-direction:column;gap:2px;padding:var(--cds-pad-sm) 0;border-top:1px solid var(--cds-chart-grid)}
 .iv-cp-item:first-child{border-top:0;padding-top:0}
 .iv-rev{display:flex;flex-direction:column;gap:2px;padding:var(--cds-pad-sm) 0;border-top:1px solid var(--cds-chart-grid)}
@@ -93,6 +96,7 @@
   <nav class="pf-tabs" role="tablist" aria-label="Seções">
     <button type="button" role="tab" id="tab-orcamento" aria-controls="orcamento" data-tab="orcamento">Orçamento</button>
     <button type="button" role="tab" id="tab-investimentos" aria-controls="investimentos" data-tab="investimentos">Investimentos</button>
+    <button type="button" role="tab" id="tab-sugestoes" aria-controls="sugestoes" data-tab="sugestoes">Sugestões</button>
   </nav>
   <div id="orcamento" class="pf-tab" role="tabpanel" aria-labelledby="tab-orcamento">
     <div class="pf-head">
@@ -275,31 +279,57 @@
       </div>
     </div>
 
-    <section id="renda-fixa" aria-label="Renda fixa">
-      <h2 class="pf-title" style="font-size:var(--cds-font-size-heading)">Renda fixa</h2>
+    <section id="rever" aria-label="Ativos para rever">
+      <h2 class="pf-h2">Ativos para rever</h2>
     </section>
     <div class="pf-grid">
-      <div class="pf-card pf-wide" id="sugestoes-rf">
-        <h2 class="pf-h2">Sugestões de renda fixa</h2>
-        <p class="pf-note">Calculadas com os seus saldos e as taxas do dia. A decisão é sua.</p>
-        <div id="iv-sug-rf" data-source="sugestoes_rf" class="iv-sug"></div>
+      <div class="pf-card pf-wide" id="revisar">
+        <h2 class="pf-h2">Ativos para rever</h2>
+        <p class="pf-note">Com cotação abaixo do preço pago, prejuízo ou ganho menor que o CDI desde a compra. Ao vender FII com lucro, paga-se 20% de IR; com prejuízo, ele abate lucros futuros com FIIs.</p>
+        <div id="iv-revisar" data-source="revisar" class="iv-sug"></div>
       </div>
-      <div class="pf-card pf-wide" id="comparativo-rf">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--cds-gap-sm);align-items:flex-start">
-          <div>
-            <h2 class="pf-h2">Quanto rende cada opção, já descontado o IR</h2>
-            <p class="pf-note">Taxa ao ano. CDB e LCI/LCA usam percentuais de referência do CDI: confira a oferta real na corretora.</p>
-          </div>
-          <div class="pf-seg" role="group" aria-label="Prazo" id="iv-prazo">
-            <button type="button" data-p="6m">Até 6 meses</button><button type="button" data-p="1a">1 ano</button><button type="button" data-p="2a">2 anos ou mais</button>
-          </div>
+      <div class="pf-card pf-wide" id="aviso">
+        <h2 class="pf-h2">Como ler esta aba</h2>
+        <p class="pf-note" style="margin:0">As tabelas de renda fixa, FIIs, ETFs e as sugestões estão na aba Sugestões.</p>
+        <ul style="margin-top:var(--cds-gap-sm)">
+          <li><b>Rentabilidade líquida</b>: IR de 22,5% (até 6 meses), 20% (até 1 ano), 17,5% (até 2 anos) e 15% (acima). LCI, LCA, CRI, CRA, poupança e rendimentos de FIIs são isentos para pessoa física. No Tesouro, desconto de 0,20% a.a. de custódia da B3, exceto no Tesouro Selic até R$ 10 mil.</li>
+          <li><b>IPCA+</b>: rendimento nominal estimado com a inflação esperada pelo Focus. <b>Poupança</b>: 0,5% ao mês + TR enquanto a Selic estiver acima de 8,5%.</li>
+          <li>Carteira montada com o extrato de movimentação da B3: a quantidade vem do último provento de cada ativo, ajustada por compras e vendas posteriores. O Tesouro IPCA+ 2035 aparece com a quantidade transferida em 2021 (compras anteriores ao extrato não aparecem; confira no Tesouro Direto), avaliado pelo preço de compra do dia. CDBs e fundos fora da B3 não aparecem.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div id="sugestoes" class="pf-tab" role="tabpanel" aria-labelledby="tab-sugestoes" hidden>
+    <div class="pf-head">
+      <div>
+        <h1 class="pf-title">Sugestões de investimento</h1>
+        <p class="pf-take" id="sg-cen" data-source="sug_cenario"><span class="dash-skeleton">—</span></p>
+      </div>
+    </div>
+
+    <div class="pf-card" id="sug-renda-fixa">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--cds-gap-sm);align-items:flex-start">
+        <div>
+          <h2 class="pf-h2">Renda fixa</h2>
+          <p class="pf-note" style="max-width:60rem">Rendimento líquido ao ano, já descontados o IR do prazo escolhido e 0,20% de custódia do Tesouro (exceto no Tesouro Selic). A tendência usa o CDI e o IPCA esperados pelo Focus. CDB e LCI/LCA usam percentuais de referência: compare com a oferta real na calculadora abaixo.</p>
         </div>
-        <div class="pf-scroll">
-          <table class="pf-tbl" id="iv-rf" data-source="rf_opcoes" data-row-key="opcao">
-            <thead><tr><th data-field="opcao">Opção</th><th data-field="indexador">Rende</th><th class="n" data-field="bruta">Bruta</th><th class="n" id="iv-rf-liq-th" data-field="liq_1a">Líquida</th><th class="n">× CDI líquido</th><th data-field="liquidez">Liquidez</th><th data-field="garantia">Garantia</th></tr></thead>
-            <tbody></tbody>
-          </table>
+        <div class="pf-seg" role="group" aria-label="Prazo do resgate" id="sg-prazo">
+          <button type="button" data-p="6m">Até 6 meses</button><button type="button" data-p="1a">Até 1 ano</button><button type="button" data-p="2a">1 a 2 anos</button><button type="button" data-p="2a+">Mais de 2 anos</button>
         </div>
+      </div>
+      <div class="pf-scroll">
+        <table class="pf-tbl sg-tbl" id="sg-rf" data-source="sug_rf" data-row-key="nome">
+          <thead><tr><th data-field="nome">Aplicação</th><th data-field="segmento">Segmento</th><th class="n" id="sg-rf-atual" data-field="liq_atual_2a">Líquido hoje a.a.</th><th class="n" id="sg-rf-tend" data-field="liq_tend_2a">Tendência 12 meses a.a.</th><th class="n" id="sg-rf-mil" data-field="mil_2a">R$ 1.000 em 12 meses</th><th data-field="liquidez">Liquidez</th><th data-field="garantia">Garantia e IR</th><th data-field="indicada">Indicada para</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pf-grid">
+      <div class="pf-card pf-wide" id="sugestoes-rf">
+        <h2 class="pf-h2">O que fazer na renda fixa</h2>
+        <p class="pf-note">Calculado com os seus saldos e as taxas do dia. A decisão é sua.</p>
+        <div id="iv-sug-rf" data-source="sugestoes_rf" class="iv-sug"></div>
       </div>
       <div class="pf-card" id="calculadora">
         <h2 class="pf-h2">Calculadora LCI/LCA × CDB</h2>
@@ -312,7 +342,7 @@
         <p class="iv-calc-out" id="iv-calc-out" data-source="juros"></p>
       </div>
       <div class="pf-card" id="tesouro">
-        <h2 class="pf-h2">Tesouro Direto</h2>
+        <h2 class="pf-h2">Tesouro Direto: todos os títulos</h2>
         <p class="pf-note" id="iv-td-note">Taxas de compra</p>
         <div class="pf-seg" role="group" aria-label="Tipo de título" id="iv-td-tipo" style="margin-bottom:var(--cds-gap-sm)">
           <button type="button" data-t="Selic">Selic</button><button type="button" data-t="Prefixado">Prefixado</button><button type="button" data-t="IPCA">IPCA+</button>
@@ -327,53 +357,48 @@
       </div>
     </div>
 
-    <section id="renda-variavel" aria-label="Renda variável">
-      <h2 class="pf-title" style="font-size:var(--cds-font-size-heading)">Renda variável</h2>
-    </section>
-    <div class="pf-grid">
-      <div class="pf-card pf-wide" id="revisar">
-        <h2 class="pf-h2">Ativos para rever</h2>
-        <p class="pf-note">Com cotação abaixo do preço pago, prejuízo ou ganho menor que o CDI desde a compra. Ao vender FII com lucro, paga-se 20% de IR; com prejuízo, ele abate lucros futuros com FIIs.</p>
-        <div id="iv-revisar" data-source="revisar" class="iv-sug"></div>
+    <div class="pf-card" id="sug-fiis">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--cds-gap-sm);align-items:flex-start">
+        <div>
+          <h2 class="pf-h2">Renda variável: FIIs e Fiagros</h2>
+          <p class="pf-note" style="max-width:60rem">DY = rendimentos dos últimos 12 meses (CVM) ÷ cotação atual, isento de IR. Tendência: fundos de crédito (CRI/CRA) seguem os juros e caem com o CDI esperado; fundos de imóveis têm aluguéis reajustados pela inflação. Só fundos com mais de 50 mil cotistas. Clique no título de uma coluna para ordenar.</p>
+        </div>
+        <select id="sg-seg" class="iv-select" aria-label="Segmento"></select>
       </div>
+      <div class="pf-scroll" style="max-height:40rem;overflow:auto">
+        <table class="pf-tbl iv-sort sg-tbl" id="sg-fii" data-source="sug_fii" data-row-key="ticker">
+          <thead><tr><th data-field="ticker"><button type="button" data-k="ticker">Fundo</button></th><th data-field="segmento"><button type="button" data-k="segmento">Segmento</button></th><th class="n" data-field="dy"><button type="button" data-k="dy">DY 12m hoje</button></th><th class="n" data-field="dy_tend"><button type="button" data-k="dy_tend">Tendência DY 12m</button></th><th data-field="regra">Por que</th><th class="n" data-field="p_vp"><button type="button" data-k="p_vp">P/VP</button></th><th class="n" data-field="volume_rs"><button type="button" data-k="volume_rs">Volume diário</button></th><th class="n" data-field="cotistas"><button type="button" data-k="cotistas">Cotistas</button></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="pf-note" id="sg-fii-fora" style="margin:var(--cds-gap-sm) 0 0"></p>
+    </div>
+
+    <div class="pf-card" id="sug-etfs">
+      <h2 class="pf-h2">Renda variável: ETFs</h2>
+      <p class="pf-note">Não pagam rendimentos mensais (reinvestem). Retorno de 12 meses pela cotação de fechamento da B3. Ganhos na venda pagam 15% de IR.</p>
+      <div class="pf-scroll">
+        <table class="pf-tbl sg-tbl" id="sg-etf" data-source="sug_etf" data-row-key="ticker">
+          <thead><tr><th data-field="ticker">ETF</th><th data-field="descricao">Acompanha</th><th class="n" data-field="retorno_12m">Retorno 12m</th><th class="n" data-field="preco">Cotação</th><th style="min-width:10rem" data-field="posicao_52s">Faixa de 52 semanas</th><th class="n" data-field="volume_rs">Volume diário</th><th>Tendência</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pf-grid">
       <div class="pf-card pf-wide" id="sugestoes-rv">
-        <h2 class="pf-h2">Sugestões de renda variável</h2>
+        <h2 class="pf-h2">O que fazer na renda variável</h2>
         <p class="pf-note">Comparação dos seus fundos com outros do mesmo segmento. Dividendos passados não garantem os futuros.</p>
         <div id="iv-sug-rv" data-source="sugestoes_rv" class="iv-sug"></div>
       </div>
-      <div class="pf-card pf-wide" id="fundos">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--cds-gap-sm);align-items:flex-start">
-          <div>
-            <h2 class="pf-h2">FIIs e Fiagros</h2>
-            <p class="pf-note">DY de 12 meses sobre a cotação atual (rendimentos informados à CVM) e preço sobre valor patrimonial. Clique no título de uma coluna para ordenar.</p>
-          </div>
-          <select id="iv-seg" class="iv-select" aria-label="Segmento"></select>
-        </div>
-        <div class="pf-scroll" style="max-height:30rem;overflow:auto">
-          <table class="pf-tbl iv-sort" id="iv-fundos" data-source="fundos_ind" data-row-key="ticker">
-            <thead><tr><th data-field="ticker"><button type="button" data-k="ticker">Fundo</button></th><th data-field="segmento"><button type="button" data-k="segmento">Segmento</button></th><th class="n" data-field="preco"><button type="button" data-k="preco">Cotação</button></th><th class="n" data-field="dy"><button type="button" data-k="dy">DY 12m</button></th><th class="n" data-field="premio"><button type="button" data-k="premio">DY − CDI líq.</button></th><th class="n" data-field="p_vp"><button type="button" data-k="p_vp">P/VP</button></th><th class="n" data-field="cotistas"><button type="button" data-k="cotistas">Cotistas</button></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="pf-card pf-wide" id="etfs">
-        <h2 class="pf-h2">ETFs</h2>
-        <p class="pf-note">Onde a cotação está entre a mínima e a máxima de 52 semanas</p>
-        <div class="pf-scroll">
-          <table class="pf-tbl" id="iv-etfs" data-source="etfs" data-row-key="ticker">
-            <thead><tr><th data-field="ticker">ETF</th><th data-field="descricao">Acompanha</th><th class="n" data-field="preco">Cotação</th><th style="min-width:10rem">Faixa de 52 semanas</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="pf-card pf-wide" id="aviso">
+      <div class="pf-card pf-wide" id="sug-como-ler">
         <h2 class="pf-h2">Como ler esta aba</h2>
         <ul style="margin-top:var(--cds-gap-sm)">
-          <li>As sugestões seguem regras simples e visíveis nas fontes de cada número. Elas não consideram seus objetivos, prazos e tolerância a risco além do que está nos dados. Não são recomendação de um analista registrado na CVM.</li>
-          <li><b>Rentabilidade líquida</b>: IR de 22,5% (até 6 meses), 20% (até 1 ano), 17,5% (até 2 anos) e 15% (acima). LCI, LCA, CRI, CRA, poupança e rendimentos de FIIs são isentos para pessoa física. No Tesouro, desconto de 0,20% a.a. de custódia da B3, exceto no Tesouro Selic até R$ 10 mil.</li>
-          <li><b>IPCA+</b>: rendimento nominal estimado com a inflação esperada pelo Focus. <b>Poupança</b>: 0,5% ao mês + TR enquanto a Selic estiver acima de 8,5%.</li>
-          <li>FIIs: rendimento por cota calculado a partir do DY mensal informado pelos administradores à CVM. Quando o administrador não informa, aparece “—”.</li>
-          <li>Carteira montada com o extrato de movimentação da B3: a quantidade vem do último provento de cada ativo, ajustada por compras e vendas posteriores. O Tesouro IPCA+ 2035 aparece com a quantidade transferida em 2021 (compras anteriores ao extrato não aparecem; confira no Tesouro Direto), avaliado pelo preço de compra do dia. CDBs e fundos fora da B3 não aparecem.</li>
+          <li>As sugestões seguem regras simples e visíveis nas fontes de cada número. Elas não consideram objetivos, prazos e tolerância a risco além do que está nos dados, e não são recomendação de um analista registrado na CVM.</li>
+          <li><b>Tendência</b> é estimativa com as expectativas do mercado (Focus), não promessa. Fundos de crédito com papéis indexados ao IPCA tendem a cair menos do que a tabela mostra.</li>
+          <li><b>IR</b>: 22,5% até 6 meses, 20% até 1 ano, 17,5% até 2 anos e 15% acima. LCI, LCA, CRI, CRA, poupança e rendimentos de FIIs são isentos para pessoa física. Prefixados e IPCA+ garantem a taxa só no vencimento; vendidos antes, o preço oscila.</li>
+          <li><b>Poupança</b>: 0,5% ao mês + TR enquanto a Selic estiver acima de 8,5%. <b>IPCA+</b>: rendimento nominal estimado com a inflação de 12 meses (hoje) e a esperada pelo Focus (tendência).</li>
+          <li>Fundos com P/VP abaixo de 0,8 ficam fora: em geral indicam cotação e valor patrimonial da CVM inconsistentes (por exemplo, depois de uma amortização).</li>
         </ul>
       </div>
     </div>
@@ -707,3 +732,4 @@ dash.calc('ritmo', {
 })();
 </script>
 <script src="invest.js"></script>
+<script src="sugestoes.js"></script>

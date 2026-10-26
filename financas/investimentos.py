@@ -90,6 +90,17 @@ def montar(transacoes, saldo, hoje, pasta_dados):
 
     etfs = [{"ticker": t, "descricao": d, "preco": cot.get(t, {}).get("preco"), "min52": cot.get(t, {}).get("min52"),
              "max52": cot.get(t, {}).get("max52"), "volume": cot.get(t, {}).get("volume")} for t, d in mercado.ETFS.items()]
+    # Retorno de 12 meses dos ETFs pela cotação de fechamento da B3 (mês de um ano atrás → último pregão).
+    try:
+        import historico
+        ha_um_ano = f"{hoje.year - 1}-{hoje.month:02d}"
+        px = historico.precos_fim_mes(list(mercado.ETFS), [ha_um_ano], hoje, pathlib.Path(pasta_dados) / "precos_fim_mes.json")
+        for e in etfs:
+            antes, agora = px.get(ha_um_ano, {}).get(e["ticker"]), px.get(hoje.strftime("%Y-%m"), {}).get(e["ticker"])
+            e["retorno_12m"] = round((agora / antes - 1) * 100, 1) if antes and agora else None
+            e["desde"] = ha_um_ano
+    except Exception as erro:  # noqa: BLE001 - sem histórico, o painel mostra "—"
+        print(f"  ETFs: retorno de 12 meses indisponível ({erro})", file=__import__("sys").stderr)
 
     b3_p = pathlib.Path(pasta_dados) / "b3_posicao.json"
     b3_doc = json.loads(b3_p.read_text()) if b3_p.exists() else {}

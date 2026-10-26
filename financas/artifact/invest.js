@@ -388,25 +388,16 @@ dash.calc('revisar', {
     Object.values(window.pfDraw).forEach((fn) => fn());
   };
   tabs.forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
-  const alvo = location.hash.slice(1);
-  const secaoInv = alvo && document.getElementById(alvo) && document.getElementById(alvo).closest('#investimentos');
-  show(alvo === 'investimentos' || secaoInv ? 'investimentos' : 'orcamento');
-  if (secaoInv && alvo !== 'investimentos') document.getElementById(alvo).scrollIntoView();
+  window.pfShow = show;
+  const alvo = location.hash.slice(1), noAlvo = alvo && document.getElementById(alvo);
+  const aba = noAlvo ? (noAlvo.classList.contains('pf-tab') ? noAlvo : noAlvo.closest('.pf-tab')) : null;
+  show(aba ? aba.id : 'orcamento');
+  if (aba && aba !== noAlvo) noAlvo.scrollIntoView();
 
   const visivel = () => !document.getElementById('investimentos').hidden;
 
   // Controles
-  document.getElementById('iv-prazo').addEventListener('click', (e) => { const b = e.target.closest('button[data-p]'); if (b) dash.setParams({prazo: b.dataset.p}); });
   document.getElementById('iv-td-tipo').addEventListener('click', (e) => { const b = e.target.closest('button[data-t]'); if (b) dash.setParams({td_tipo: b.dataset.t}); });
-  const segSel = document.getElementById('iv-seg');
-  segSel.addEventListener('change', () => dash.setParams({segmento: segSel.value || null}));
-  let ordem = {k: 'dy', desc: true};
-  document.querySelector('#iv-fundos thead').addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-k]');
-    if (!b) return;
-    ordem = {k: b.dataset.k, desc: ordem.k === b.dataset.k ? !ordem.desc : !['ticker', 'segmento', 'p_vp'].includes(b.dataset.k)};
-    desenharFundos();
-  });
   ['iv-calc-lci', 'iv-calc-prazo'].forEach((id) => document.getElementById(id).addEventListener('input', calcular));
 
   function calcular() {
@@ -427,33 +418,6 @@ dash.calc('revisar', {
       c.append(v, el('div', {class: 'd'}, it.d || ''));
       if (it.st) { const s = el('div', {class: 'pf-st ' + it.st[0]}, it.st[1]); c.append(s); }
       return c;
-    }));
-  }
-
-  function desenharFundos() {
-    const d = dash.data('fundos_ind'), tb = document.querySelector('#iv-fundos tbody');
-    if (d.status !== 'ok') { tb.replaceChildren(); return; }
-    const seg = dash.params().segmento || '';
-    const segs = [...new Set(d.data.map((f) => f.segmento).filter(Boolean))].sort();
-    if (segSel !== document.activeElement) {
-      segSel.replaceChildren(new Option('Todos os segmentos', ''), ...segs.map((s) => new Option(s, s)));
-      segSel.value = seg;
-    }
-    const rows = d.data.filter((f) => !seg || f.segmento === seg).slice().sort((a, b) => {
-      const x = a[ordem.k], y = b[ordem.k];
-      if (x == null) return 1; if (y == null) return -1;
-      const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
-      return ordem.desc ? -c : c;
-    });
-    document.querySelectorAll('#iv-fundos thead th').forEach((th) => { const b = th.querySelector('button'); th.setAttribute('aria-sort', b && b.dataset.k === ordem.k ? (ordem.desc ? 'descending' : 'ascending') : 'none'); });
-    tb.replaceChildren(...rows.map((f) => {
-      const tr = el('tr', {});
-      if (f.na_carteira) tr.className = 'iv-mine';
-      const tk = el('td', {}, f.ticker);
-      tr.append(tk, el('td', {}, f.segmento), el('td', {class: 'n'}, f.preco == null ? '—' : F.brl2(f.preco)), el('td', {class: 'n'}, pc1(f.dy)),
-        el('td', {class: 'n ' + (f.premio == null ? '' : f.premio >= 0 ? 'iv-pos' : 'iv-neg')}, f.premio == null ? '—' : (f.premio > 0 ? '+' : '') + pc1(f.premio)),
-        el('td', {class: 'n'}, num2(f.p_vp)), el('td', {class: 'n'}, f.cotistas == null ? '—' : Math.round(f.cotistas).toLocaleString('pt-BR')));
-      return tr;
     }));
   }
 
@@ -529,8 +493,7 @@ dash.calc('revisar', {
   window.pfDraw.juros = graficoJuros;
 
   dash.onData(() => {
-    const p = dash.params(), prazo = p.prazo || '1a', tdTipo = p.td_tipo || 'IPCA';
-    document.querySelectorAll('#iv-prazo button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === prazo)));
+    const p = dash.params(), tdTipo = p.td_tipo || 'IPCA';
     document.querySelectorAll('#iv-td-tipo button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === tdTipo)));
 
     // Cenário
@@ -658,20 +621,6 @@ dash.calc('revisar', {
 
     // Renda fixa
     sugestoes('iv-sug-rf', 'sugestoes_rf');
-    const rf = dash.data('rf_opcoes'), rfb = document.querySelector('#iv-rf tbody'), k = 'liq_' + prazo;
-    const th = document.getElementById('iv-rf-liq-th');
-    th.setAttribute('data-field', k);
-    th.textContent = {'6m': 'Líquida (até 6 meses)', '1a': 'Líquida (1 ano)', '2a': 'Líquida (2 anos+)'}[prazo];
-    const best = rf.status === 'ok' ? d3.max(rf.data, (o) => o[k]) : null;
-    rfb.replaceChildren(...(rf.status === 'ok' ? rf.data : []).map((o) => {
-      const row = el('tr', {});
-      const rel = o['rel_' + prazo];
-      row.append(el('td', {}, o.opcao), el('td', {class: 'iv-muted'}, o.indexador), el('td', {class: 'n'}, pc2(o.bruta)),
-        el('td', {class: 'n' + (o[k] != null && o[k] === best ? ' iv-best' : '')}, o[k] == null ? 'não disponível' : pc2(o[k])),
-        el('td', {class: 'n ' + (rel == null ? '' : rel >= 100 ? 'iv-pos' : 'iv-neg')}, rel == null ? '—' : rel + '%'),
-        el('td', {class: 'iv-muted'}, o.liquidez), el('td', {class: 'iv-muted'}, o.garantia));
-      return row;
-    }));
     calcular();
     const td = dash.data('tesouro'), tdb = document.querySelector('#iv-td tbody');
     const tipos = {Selic: ['Tesouro Selic'], Prefixado: ['Tesouro Prefixado', 'Tesouro Prefixado com Juros Semestrais'], IPCA: ['Tesouro IPCA+', 'Tesouro IPCA+ com Juros Semestrais', 'Tesouro Renda+ Aposentadoria Extra', 'Tesouro Educa+']};
@@ -684,20 +633,6 @@ dash.calc('revisar', {
 
     // Renda variável
     sugestoes('iv-sug-rv', 'sugestoes_rv');
-    desenharFundos();
-    const et = dash.data('etfs'), etb = document.querySelector('#iv-etfs tbody');
-    etb.replaceChildren(...(et.status === 'ok' ? et.data : []).map((e) => {
-      const row = el('tr', {});
-      const pos = e.max52 > e.min52 ? (e.preco - e.min52) / (e.max52 - e.min52) * 100 : null;
-      const faixa = el('td', {});
-      if (pos != null) {
-        const bar = el('div', {class: 'iv-range', title: `${F.brl2(e.min52)} a ${F.brl2(e.max52)}`});
-        bar.append(el('span', {style: `left:${Math.max(0, Math.min(100, pos))}%;background:${dash.colors[0]}`}));
-        faixa.append(bar, el('div', {class: 'pf-note', style: 'margin:2px 0 0'}, `${F.brl(e.min52)} – ${F.brl(e.max52)}`));
-      }
-      row.append(el('td', {}, e.ticker), el('td', {class: 'iv-muted'}, e.descricao), el('td', {class: 'n'}, e.preco == null ? '—' : F.brl2(e.preco)), faixa);
-      return row;
-    }));
 
     // Resumo
     const take = document.getElementById('iv-take'), rs = dash.data('reserva');
