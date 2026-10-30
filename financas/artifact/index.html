@@ -1,7 +1,11 @@
 <style>
 .pf-upd{display:flex;flex-wrap:wrap;align-items:center;gap:var(--cds-gap-sm) var(--cds-gap-md)}
 .pf-upd .pf-btn[disabled]{opacity:.55;cursor:default}
-.pf-upd-conf{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--cds-gap-sm);font-size:var(--cds-font-size-caption)}
+.pf-upd-como{flex-basis:100%;font-size:var(--cds-font-size-body);color:var(--color-fg-muted)}
+.pf-upd-como ol{margin:0;padding-left:1.2rem}
+.pf-upd-como li{margin:2px 0}
+.pf-upd-como p{margin:var(--cds-gap-xs) 0 0}
+.pf-upd-como b{color:var(--color-fg)}
 .pf-upd-msg{margin:0}
 .pf-link{font:inherit;font-size:var(--cds-font-size-caption);background:none;border:0;padding:0;color:var(--color-fg-muted);text-decoration:underline;cursor:pointer}
 .pf-link:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
@@ -108,13 +112,17 @@
 
 <div class="pf">
   <div class="pf-upd" id="atualizar">
-    <button type="button" class="pf-btn" id="pf-atualizar">Atualizar dados</button>
-    <span class="pf-upd-conf" id="pf-atualizar-conf" hidden>Rodar a atualização agora? Leva cerca de 5 minutos.
-      <button type="button" class="pf-btn" id="pf-atualizar-sim">Atualizar</button>
-      <button type="button" class="pf-btn" id="pf-atualizar-nao">Cancelar</button>
-    </span>
-    <span class="pf-note pf-upd-msg" id="pf-atualizar-msg" data-source="atualizacao_status"></span>
-    <button type="button" class="pf-link" id="pf-atualizar-ver">ver situação</button>
+    <span class="pf-note pf-upd-msg" id="pf-atualizar-msg" data-source="atualizacao"></span>
+    <button type="button" class="pf-btn" id="pf-atualizar" aria-expanded="false" aria-controls="pf-atualizar-como">Como atualizar agora</button>
+    <div class="pf-upd-como" id="pf-atualizar-como" hidden>
+      <ol>
+        <li>No menu lateral do Claude, abra <b>Agendados</b>.</li>
+        <li>Escolha a tarefa <b>Atualizar painel financeiro</b>.</li>
+        <li>Use a opção de executar agora (“Run now”). Leva cerca de 5 minutos.</li>
+        <li>Volte aqui e recarregue o painel: a data acima muda quando terminar.</li>
+      </ol>
+      <p>Ou peça no chat: “atualize o painel financeiro”.</p>
+    </div>
   </div>
   <nav class="pf-tabs" role="tablist" aria-label="Seções">
     <button type="button" role="tab" id="tab-orcamento" aria-controls="orcamento" data-tab="orcamento">Orçamento</button>

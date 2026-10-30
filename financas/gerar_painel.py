@@ -57,6 +57,7 @@ def exportar_datasets(r, pasta):
     carro = s["grupos"].get("Carro e transporte", [0] * len(r["meses"]))
     ma = r["mes_atual"]
     conjuntos = {
+        "atualizacao": [{"gerado_em": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "referencia": r["hoje"]}],
         "mensal": [{"mes": m, "receita": s["receita"][i], "despesa": s["despesa"][i], "fixos": s["fixos"][i],
                     "carro": carro[i], "comer_fora": s["comer_fora"][i], "aplicado": s["aplicado"][i]}
                    for i, m in enumerate(r["meses"])],
