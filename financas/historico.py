@@ -29,7 +29,7 @@ def _baixar(url):
             with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "painel-financeiro/1.0"}), timeout=300) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
-            if e.code == 404:
+            if e.code in (403, 404):  # dia sem pregão: a B3 responde 403 ou 404
                 return None
             if tentativa == 2:
                 raise
@@ -85,8 +85,15 @@ def precos_fim_mes(tickers, meses, hoje, cache_path):
         if conteudo:
             f = _fechamentos(conteudo, procurar)
             if f:
-                cache[atual] = {t: (f.get(t) or f.get(c))[1] for t, c in codigos.items() if f.get(t) or f.get(c)}
-                cache.setdefault("_datas", {})[atual] = d.isoformat()
+                datas = cache.setdefault("_datas", {})
+                anterior = datas.get(atual)
+                if anterior and anterior[:7] == atual and d.isoformat() < anterior and all(t in cache.get(atual, {}) for t in tickers):
+                    break  # já há cotações mais recentes deste mês para estes ativos
+                novos = {t: (f.get(t) or f.get(c))[1] for t, c in codigos.items() if f.get(t) or f.get(c)}
+                if not anterior or anterior[:7] != atual:
+                    cache[atual] = {}
+                cache.setdefault(atual, {}).update(novos)
+                datas[atual] = max(d.isoformat(), anterior or "") if anterior and anterior[:7] == atual else d.isoformat()
                 _log(f"B3: cotações do pregão de {d}")
                 break
         d -= dt.timedelta(days=1)
