@@ -56,5 +56,28 @@ class CalcularTest(unittest.TestCase):
         self.assertEqual(r["status"]["reserva"], "warning")
 
 
+class PlanoTest(unittest.TestCase):
+    def test_previsto_realizado(self):
+        import plano as P
+        cfg = {"inicio": "2026-11", "aporte_inicial": 1000, "fica_na_conta": 5000,
+               "metas_mensais": {"Supermercado": 300},
+               "meses": [{"mes": "2026-11", "renda": 5000, "gasto": 4000, "aporte": 1000, "saldo": 2000},
+                         {"mes": "2026-12", "renda": 5000, "gasto": 4000, "aporte": 1000, "saldo": 3000}]}
+        txs = [tx("BANK", "CREDIT", 5000, "Salário", date="2026-11-05"),
+               tx("BANK", "DEBIT", -3500, "Moradia", date="2026-11-10"),
+               tx("CREDIT", "DEBIT", 400, "Supermercado", date="2026-11-12", due="2026-11-20T00:00:00Z"),
+               tx("CREDIT", "DEBIT", 200, "Supermercado", date="2025-11-12", due="2025-11-20T00:00:00Z")]
+        saldo = {"accounts": [{"name": "Banco Santander", "balance": 6000}, {"name": "XP", "balance": 500}]}
+        r = P.montar(cfg, txs, saldo, dt.date(2026, 12, 3))
+        nov, dez = r["plano"]
+        self.assertEqual(nov["situacao"], "fechado")
+        self.assertEqual(nov["sobra_real"], 1100)
+        self.assertEqual(nov["acumulado_real"], 2100)
+        self.assertEqual(dez["situacao"], "em andamento")
+        self.assertEqual(r["plano_metas"][0]["real"], 400)
+        self.assertAlmostEqual(r["plano_metas"][0]["media_antes"], 200 / 12, places=2)
+        self.assertEqual(r["plano_resumo"][0]["parado_em_conta"], 1500)
+
+
 if __name__ == "__main__":
     unittest.main()

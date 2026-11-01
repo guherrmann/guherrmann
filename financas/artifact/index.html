@@ -1,4 +1,5 @@
 <style>
+.pl-atual td{background:var(--color-bg)}
 .pf-upd{display:flex;flex-wrap:wrap;align-items:center;gap:var(--cds-gap-sm) var(--cds-gap-md)}
 .pf-upd .pf-btn[disabled]{opacity:.55;cursor:default}
 .pf-upd-como{flex-basis:100%;font-size:var(--cds-font-size-body);color:var(--color-fg-muted)}
@@ -128,6 +129,7 @@
     <button type="button" role="tab" id="tab-orcamento" aria-controls="orcamento" data-tab="orcamento">Orçamento</button>
     <button type="button" role="tab" id="tab-investimentos" aria-controls="investimentos" data-tab="investimentos">Investimentos</button>
     <button type="button" role="tab" id="tab-sugestoes" aria-controls="sugestoes" data-tab="sugestoes">Sugestões</button>
+    <button type="button" role="tab" id="tab-plano" aria-controls="plano" data-tab="plano">Plano</button>
   </nav>
   <div id="orcamento" class="pf-tab" role="tabpanel" aria-labelledby="tab-orcamento">
     <div class="pf-head">
@@ -449,6 +451,56 @@
           <li><b>IR</b>: 22,5% até 6 meses, 20% até 1 ano, 17,5% até 2 anos e 15% acima. LCI, LCA, CRI, CRA, poupança e rendimentos de FIIs são isentos para pessoa física. Prefixados e IPCA+ garantem a taxa só no vencimento; vendidos antes, o preço oscila.</li>
           <li><b>Poupança</b>: 0,5% ao mês + TR enquanto a Selic estiver acima de 8,5%. <b>IPCA+</b>: rendimento nominal estimado com a inflação de 12 meses (hoje) e a esperada pelo Focus (tendência).</li>
           <li>Fundos com P/VP abaixo de 0,8 ficam fora: em geral indicam cotação e valor patrimonial da CVM inconsistentes (por exemplo, depois de uma amortização).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div id="plano" class="pf-tab" role="tabpanel" aria-labelledby="tab-plano" hidden>
+    <div class="pf-head">
+      <div>
+        <h1 class="pf-title">Plano de aportes</h1>
+        <p class="pf-take" id="pl-take" data-source="plano_calc"><span class="dash-skeleton">—</span></p>
+      </div>
+    </div>
+
+    <section class="pf-kpis" id="pl-kpis" aria-label="Situação do plano"></section>
+
+    <div class="pf-grid">
+      <div class="pf-card pf-wide" id="pl-grafico">
+        <h2 class="pf-h2">Aporte previsto × sobra realizada</h2>
+        <p class="pf-note">Sobra = renda − gasto do mês, pelas transações do Pierre. É o que dá para aplicar. Meses futuros mostram só o previsto.</p>
+        <div class="pf-legend"><span><i style="background:var(--cds-chart-muted)"></i>Previsto</span><span><i style="background:var(--pf-c0)"></i>Realizado</span><span><span class="ln"></span>Acumulado previsto</span><span><span class="ln" style="border-color:var(--pf-c0)"></span>Acumulado realizado</span></div>
+        <div class="pf-chart" id="pl-ch" data-source="plano" style="min-height:280px"></div>
+      </div>
+      <div class="pf-card pf-wide" id="pl-tabela">
+        <h2 class="pf-h2">Mês a mês</h2>
+        <p class="pf-note" id="pl-ini"></p>
+        <div class="pf-scroll">
+          <table class="pf-tbl sg-tbl" id="pl-tab" data-source="plano" data-row-key="mes">
+            <thead><tr><th data-field="mes">Mês</th><th class="n" data-field="renda_real">Renda prevista · real</th><th class="n" data-field="gasto_real">Gasto-alvo · real</th><th class="n" data-field="sobra_real">Aporte previsto · sobra real</th><th class="n">Diferença</th><th data-field="destino">Onde aplicar</th><th class="n" data-field="saldo_prev">Saldo projetado</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pf-card" id="pl-metas">
+        <h2 class="pf-h2">Metas de corte</h2>
+        <p class="pf-note">Gasto mensal nas categorias que liberam R$ 850 por mês para aportar</p>
+        <div class="pf-scroll">
+          <table class="pf-tbl sg-tbl" id="pl-metas-tab" data-source="plano_metas_resumo" data-row-key="categoria">
+            <thead><tr><th data-field="categoria">Categoria</th><th class="n" data-field="meta">Meta/mês</th><th class="n" data-field="mes_atual">Este mês</th><th class="n" data-field="media_fechados">Média do plano</th><th class="n" data-field="antes">Antes do plano</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pf-card" id="pl-regras">
+        <h2 class="pf-h2">Regras do plano</h2>
+        <ul style="margin-top:var(--cds-gap-sm)">
+          <li><b>Reserva primeiro.</b> Até cobrir 3 meses de gasto (~R$ 27,6 mil), tudo vai para liquidez diária.</li>
+          <li><b>Tesouro Selic até R$ 10 mil</b> (sem custódia); o resto em CDB de liquidez diária com 100% do CDI ou mais (FGC até R$ 250 mil por banco).</li>
+          <li><b>A partir de maio/27</b>, 30% dos aportes no Tesouro IPCA+ 2035, para travar juro real alto antes da queda da Selic.</li>
+          <li><b>Sem renda variável nova</b> nos 12 meses; rendimentos dos FIIs e o capital devolvido pelo CRA vão para a reserva.</li>
+          <li><b>R$ 5 mil ficam no Santander</b> para pagar contas. O que passar disso entra no plano.</li>
+          <li>Para mudar metas ou valores do plano, peça ao Claude no chat.</li>
         </ul>
       </div>
     </div>
@@ -783,4 +835,5 @@ dash.calc('ritmo', {
 </script>
 <script src="invest.js"></script>
 <script src="sugestoes.js"></script>
+<script src="plano.js"></script>
 <script src="atualizar.js"></script>

@@ -102,6 +102,12 @@ def main():
     print(f"Painel gerado em {saida}", file=sys.stderr)
     if args.datasets:
         nomes = exportar_datasets(resumo, args.datasets)
+        import plano as plano_mod
+        cfg = plano_mod.carregar(DADOS)
+        if cfg:
+            for nome, linhas in plano_mod.montar(cfg, bruto["transacoes"], bruto["saldo"], hoje).items():
+                (pathlib.Path(args.datasets) / f"{nome}.json").write_text(json.dumps(linhas, ensure_ascii=False))
+                nomes.append(nome)
         if not args.sem_mercado:
             import investimentos
             inv = investimentos.montar(bruto["transacoes"], bruto["saldo"], hoje, DADOS)
